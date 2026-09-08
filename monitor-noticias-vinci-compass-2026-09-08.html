@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clipping de Notícias | Henrique Assunção</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --azul:#0147ab;
+    --azul-escuro:#02356e;
+    --azul-tint:#eef4fb;
+    --tinta:#141a22;
+    --cinza:#67707c;
+    --borda:#e4e8ee;
+    --fundo:#fbfcfe;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--fundo);
+    color:var(--tinta);
+    font-size:15px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1440px;margin:0 auto;padding:0 32px 80px;}
+
+  header{border-bottom:3px solid var(--azul);padding:34px 0 22px;}
+  .brand{font-family:'Archivo',sans-serif;font-weight:700;font-size:1.55rem;letter-spacing:-0.015em;}
+  .brand span{color:var(--azul);}
+  .meta-linha{
+    display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;margin-top:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--cinza);
+    text-transform:uppercase;letter-spacing:0.06em;
+  }
+  .meta-linha .dot{color:var(--azul);}
+
+  /* ---- abas ---- */
+  .tab-bar{display:flex;gap:6px;margin-top:26px;border-bottom:1px solid var(--borda);}
+  .tab-btn{
+    font-family:'Archivo',sans-serif;font-weight:600;font-size:0.86rem;
+    background:none;border:none;cursor:pointer;color:var(--cinza);
+    padding:12px 18px;border-bottom:3px solid transparent;margin-bottom:-1px;
+    transition:color .12s ease,border-color .12s ease;
+  }
+  .tab-btn:hover{color:var(--azul);}
+  .tab-btn.ativo{color:var(--azul);border-bottom-color:var(--azul);}
+  .tab-btn .n{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;opacity:.65;margin-left:5px;}
+  .tab-panel{display:none;}
+  .tab-panel.ativo{display:block;}
+
+  /* ---- top 10 do dia (destaque cross-tab, aba Destaques) ---- */
+  .top10-bloco{margin-top:26px;}
+  .top10-titulo{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:14px;
+  }
+  .top10-titulo h2{
+    font-family:'Archivo',sans-serif;font-weight:700;font-size:1.08rem;color:var(--tinta);letter-spacing:-0.01em;
+  }
+  .top10-titulo .top10-sub{
+    font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--cinza);
+    text-transform:uppercase;letter-spacing:0.06em;
+  }
+  .top10-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+  .top10-item{
+    background:var(--azul-escuro);border-radius:6px;padding:16px 18px;
+    display:flex;gap:12px;color:#fff;
+  }
+  .top10-num{
+    font-family:'Archivo',sans-serif;font-weight:700;font-size:1.5rem;color:#7fa8dd;
+    line-height:1.1;flex-shrink:0;min-width:24px;
+  }
+  .top10-corpo{min-width:0;}
+  .top10-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:0.64rem;text-transform:uppercase;letter-spacing:0.05em;
+    color:#cfe0f7;background:rgba(255,255,255,.14);padding:2px 8px;border-radius:3px;display:inline-block;margin-bottom:6px;
+  }
+  .top10-corpo h3{font-family:'Archivo',sans-serif;font-size:0.92rem;font-weight:600;line-height:1.32;margin-bottom:5px;}
+  .top10-corpo h3 a{color:#fff;text-decoration:none;}
+  .top10-corpo h3 a:hover{text-decoration:underline;}
+  .top10-corpo p{font-size:0.78rem;color:#c9d8ef;line-height:1.42;margin:0;}
+  @media (max-width:780px){
+    .top10-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));}
+  }
+
+  /* ---- resumo do dia: faixa full-width, expande por toda a largura da página ---- */
+  .resumo-bloco{margin:26px 0 8px;}
+  .btn-resumo{
+    width:100%;display:flex;justify-content:space-between;align-items:center;
+    background:var(--azul);color:#fff;border:none;cursor:pointer;padding:14px 18px;
+    font-family:'Archivo',sans-serif;font-weight:600;font-size:0.95rem;letter-spacing:0.01em;
+    border-radius:6px;transition:background .15s ease;
+  }
+  .btn-resumo:hover{background:var(--azul-escuro);}
+  .btn-resumo:focus-visible{outline:2px solid var(--azul-escuro);outline-offset:2px;}
+  .btn-resumo .seta{font-size:0.8rem;transition:transform .2s ease;}
+  .btn-resumo[aria-expanded="true"] .seta{transform:rotate(180deg);}
+  .resumo-corpo{
+    display:none;background:#fff;border:1px solid var(--borda);border-top:none;
+    border-radius:0 0 6px 6px;padding:28px 32px 32px;
+    column-count:2;column-gap:40px;
+  }
+  .resumo-corpo.aberto{display:block;}
+  .resumo-corpo .mood-tag{column-span:all;}
+  .resumo-corpo h3{
+    font-family:'Archivo',sans-serif;font-size:0.8rem;font-weight:700;
+    text-transform:uppercase;letter-spacing:0.09em;color:var(--azul);
+    margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--borda);
+    break-after:avoid;break-inside:avoid;
+  }
+  .resumo-corpo h3:first-of-type{margin-top:0;}
+  .resumo-corpo p{margin:0 0 14px;color:#2a323d;}
+  .resumo-corpo a{color:var(--azul);text-decoration:none;border-bottom:1px solid #b9cfe9;}
+  .resumo-corpo a:hover{border-bottom-color:var(--azul);}
+  .mood-tag{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+    background:var(--azul-tint);color:var(--azul-escuro);padding:4px 10px;border-radius:4px;
+    margin-bottom:16px;letter-spacing:0.04em;
+  }
+
+  /* ---- layout wide: coluna lateral fixa (filtros) + grade de notícias ---- */
+  .layout{display:grid;grid-template-columns:280px 1fr;gap:32px;align-items:start;margin-top:8px;}
+  .sidebar{position:sticky;top:20px;}
+  .main{min-width:0;}
+
+  .filtros{
+    background:var(--fundo);
+    padding:16px 16px 14px;border:1px solid var(--borda);border-radius:6px;
+  }
+  .filtro-label{
+    font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--cinza);
+    text-transform:uppercase;letter-spacing:0.08em;margin:0 0 7px;
+  }
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+  .chips:last-child{margin-bottom:0;}
+  .chip{
+    font-family:'Inter',sans-serif;font-size:0.79rem;font-weight:500;
+    border:1px solid var(--borda);background:#fff;color:var(--tinta);
+    padding:5px 12px;border-radius:999px;cursor:pointer;transition:all .12s ease;
+  }
+  .chip:hover{border-color:var(--azul);color:var(--azul);}
+  .chip.ativo{background:var(--azul);border-color:var(--azul);color:#fff;}
+  .chip .n{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;opacity:.65;margin-left:4px;}
+  .chip:disabled{opacity:.35;cursor:default;}
+  .chip:disabled:hover{border-color:var(--borda);color:var(--tinta);}
+
+  .contagem{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--cinza);margin:0 0 4px;}
+  #lista, #listaIntl, #listaMerc{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;}
+  .noticia{
+    background:#fff;border:1px solid var(--borda);border-left:3px solid var(--azul);
+    border-radius:6px;padding:16px 18px 14px;transition:box-shadow .15s ease;
+    display:flex;flex-direction:column;
+  }
+  .noticia:hover{box-shadow:0 2px 10px rgba(1,71,171,.08);}
+  .noticia h2{font-family:'Archivo',sans-serif;font-size:1.02rem;font-weight:600;line-height:1.38;margin-bottom:6px;}
+  .noticia h2 a{color:var(--tinta);text-decoration:none;}
+  .noticia h2 a:hover{color:var(--azul);}
+  .noticia .resumo-item{font-size:0.86rem;color:#3d4652;margin-bottom:10px;flex:1;}
+  .noticia .rodape{
+    display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;
+    font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--cinza);
+  }
+  .jornal-tag{color:var(--azul);font-weight:500;}
+  .tema-tag{
+    background:var(--azul-tint);color:var(--azul-escuro);
+    padding:2px 8px;border-radius:3px;font-size:0.66rem;letter-spacing:0.03em;
+  }
+  .vazio{
+    text-align:center;padding:48px 20px;color:var(--cinza);font-size:0.9rem;
+    background:#fff;border:1px dashed var(--borda);border-radius:6px;grid-column:1/-1;
+  }
+
+  .nota{
+    margin-top:36px;padding:16px 18px;background:var(--azul-tint);border-radius:6px;
+    font-size:0.79rem;color:#2a3a52;line-height:1.6;
+  }
+  .nota strong{color:var(--azul-escuro);}
+  footer{margin-top:30px;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--cinza);text-align:center;}
+  @media (max-width:900px){
+    .resumo-corpo{column-count:1;}
+  }
+  @media (max-width:780px){
+    .layout{grid-template-columns:1fr;}
+    .sidebar{position:static;}
+    #lista, #listaIntl, #listaMerc{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+  }
+  @media (max-width:520px){.brand{font-size:1.25rem;}body{font-size:14px;}.wrap{padding:0 16px 60px;}}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;}html{scroll-behavior:auto;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">Clipping de Notícias <span>| Henrique Assunção</span></div>
+    <div class="meta-linha">
+      <span>terça-feira, 8 de setembro de 2026</span>
+      <span class="dot">●</span>
+      <span>Brasil: janela 18h (desde 07/09 ~11h) · Internacional: janela 18h (desde 07/09 ~11h)</span>
+      <span class="dot">●</span>
+      <span>Valor · O Globo · Folha · Estadão · CNN · Metrópoles · Poder360 · BCB · FGV · IBGE · FT · WSJ · NYT · Reuters</span>
+    </div>
+  </header>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn ativo" data-tab="destaques">Destaques</button>
+    <button class="tab-btn" data-tab="brasil">Brasil <span class="n" id="nBrasil"></span></button>
+    <button class="tab-btn" data-tab="intl">Internacional <span class="n" id="nIntl"></span></button>
+    <button class="tab-btn" data-tab="merc">Mercados &amp; Empresas <span class="n" id="nMerc"></span></button>
+  </div>
+
+  <!-- ===================== ABA DESTAQUES ===================== -->
+  <div class="tab-panel ativo" id="tab-destaques">
+    <div class="top10-bloco">
+      <div class="top10-titulo">
+        <h2>Top 10 do dia</h2>
+        <span class="top10-sub">destaques cross-tab · Brasil, Internacional e Mercados &amp; Empresas</span>
+      </div>
+      <div class="top10-grid" id="top10Grid"></div>
+    </div>
+  </div>
+
+  <!-- ===================== ABA BRASIL ===================== -->
+  <div class="tab-panel" id="tab-brasil">
+
+    <div class="resumo-bloco">
+      <button class="btn-resumo" id="btnResumo" aria-expanded="false" aria-controls="resumoCorpo">
+        Resumo do noticiário do dia
+        <span class="seta">▼</span>
+      </button>
+      <div class="resumo-corpo" id="resumoCorpo">
+        <span class="mood-tag">clima do dia: crise institucional no ápice, mercado prudente, campanha embolada</span>
+
+<h3>Eleições</h3>
+<p>A rodada mais recente da <a href="https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/pesquisa-quaest-lula-e-flavio-estao-numericamente-empatados-com-41percent-no-2o-turno.ghtml">Quaest colocou Lula e Flávio Bolsonaro numericamente empatados</a> num cenário de segundo turno, um recuo do presidente frente a levantamentos anteriores. No primeiro turno, o quadro é menos apertado — <a href="https://oglobo.globo.com/blogs/pulso/post/2026/09/lula-lidera-pesquisa-quaest-no-1o-turno-com-36percent-contra-29percent-de-flavio-cury-marca-8percent.ghtml">36% a 29%</a> —, mas o crescimento de Augusto Cury como terceira via ganhou peso simbólico especial ao ser tratado como o "calcanhar de Aquiles" da candidatura petista. A desaprovação de Lula chegou a <a href="https://www.estadao.com.br/politica/eliane-cantanhede/na-quaest-flavio-nao-avanca-lula-e-que-corroi-seu-favoritismo-e-anda-de-re/">50%</a>, puxada mais pelo aperto no orçamento das famílias do que pela discussão sobre dívida pública propriamente dita.</p>
+<p>Os atos de 7 de Setembro confirmaram o tom da disputa: em São Paulo, <a href="https://www.poder360.com.br/poder-eleicoes-2026/sob-frio-de-14-oc-flavio-reune-34-200-na-avenida-paulista/">Flávio reuniu cerca de 32 mil pessoas na Paulista</a>, onde <a href="https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/tarcisio-diz-que-ninguem-esta-acima-da-lei-e-cobra-explicacao-de-moraes-em-ato-com-flavio-bolsonaro.ghtml">Tarcísio cobrou explicações de Moraes</a> e o próprio senador afirmou que pretende <a href="https://www.poder360.com.br/poder-eleicoes-2026/vou-indicar-5-ministros-ao-stf-porque-moraes-vai-cair-afirma-flavio/">indicar cinco ministros ao STF</a> caso seja eleito — uma declaração que já antecipa uma futura reconfiguração da Corte. Do outro lado, Lula tentou <a href="https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/lula-defende-soberania-e-candidatos-da-direita-miram-crise-no-stf-em-atos-do-7-de-setembro.ghtml">capitalizar o tema da soberania nacional</a>, evitando entrar no debate sobre o Judiciário. O episódio expôs fissuras dentro do próprio campo bolsonarista: <a href="https://www.metropoles.com/brasil/zema-e-hostilizado-ao-caminhar-na-paulista-durante-ato-do-7-de-setembro">Zema foi hostilizado</a> ao circular entre os manifestantes.</p>
+
+<h3>Política e Congresso</h3>
+<p>A crise entre os ministros Moraes e Mendonça continua sem desfecho e já é tratada por parte da própria Corte como a <a href="https://valor.globo.com/politica/noticia/2026/09/08/ministros-aposentados-do-stf-classificam-crise-como-a-mais-aguda-da-historia.ghtml">mais grave da história do tribunal</a>. Treze ministros aposentados pediram a Fachin uma <a href="https://www.poder360.com.br/poder-justica/13-ministros-aposentados-do-stf-pedem-rigorosa-apuracao-a-fachin/">apuração rigorosa</a>, movimento reforçado por uma carta de ex-presidentes da Corte — entre eles Joaquim Barbosa, Celso de Mello e Rosa Weber — que <a href="https://www1.folha.uol.com.br/poder/2026/09/ex-presidentes-do-stf-pedem-acao-de-fachin-e-falam-em-mais-aguda-crise-da-corte.shtml">cobra uma resposta institucional</a> sem citar diretamente nenhum dos dois ministros envolvidos. A OAB também entrou na pressão pedindo <a href="https://www.estadao.com.br/politica/presidente-da-oab-pede-transparencia-e-cobra-respostas-do-stf-em-meio-a-crise-na-corte/">transparência</a>, mas Fachin optou por <a href="https://www.cnnbrasil.com.br/politica/fachin-cancela-reuniao-com-dirigentes-da-oab-em-meio-a-crise-no-stf/">cancelar o encontro</a> marcado com a entidade — um sinal de que ainda não tem uma resposta pronta para dar.</p>
+<p>Nos bastidores, uma ala da própria Corte já trabalha para <a href="https://www.cnnbrasil.com.br/politica/ala-do-stf-aposta-em-decisao-sobre-moraes-e-mendonca-so-apos-as-eleicoes/">adiar qualquer desfecho para depois do segundo turno</a>, numa tentativa de isolar a crise do calendário eleitoral, enquanto o Planalto e o STF <a href="https://www.poder360.com.br/poder-justica/planalto-e-supremo-negociam-preservar-moraes-ate-depois-da-eleicao/">negociam preservar Moraes</a> pelo mesmo período. No Senado, o tema do impeachment de Moraes já não é mais tabu: <a href="https://www1.folha.uol.com.br/poder/2026/09/senadores-admitem-chance-de-impeachment-no-stf-e-veem-alcolumbre-a-espera-das-eleicoes.shtml">parlamentares que antes descartavam a hipótese</a> passaram a tratá-la como possibilidade real, o que já gera <a href="https://www.metropoles.com/brasil/por-impeachment-de-moraes-alcolumbre-e-flavio-entram-em-rota-de-colisao">atrito aberto entre Alcolumbre e Flávio</a>. A campanha do PT, por sua vez, avalia propor uma <a href="https://www1.folha.uol.com.br/poder/2026/09/campanha-do-pt-debate-reforma-do-judiciario-com-medidas-anticorrupcao-para-se-blindar-de-crise-no-stf.shtml">reforma do Judiciário</a> como resposta ao desgaste da crise.</p>
+
+<h3>Fiscal</h3>
+<p>O quadro fiscal segue deteriorando: analistas de mercado <a href="https://www.estadao.com.br/economia/economia-perde-forca-e-mercado-antecipa-para-2034-previsao-de-divida-maior-que-o-pib/">anteciparam para 2034</a> a data em que a dívida pública bruta deve superar o tamanho da economia brasileira, e a gestão do novo secretário do Tesouro, Dario Durigan, é associada a uma <a href="https://www.poder360.com.br/poder-economia/contas-do-governo-pioram-com-dario-durigan/">piora adicional nas contas</a> — tema sensível num ano em que o governo já enfrenta desgaste eleitoral. O pacote de estímulos de R$ 200 bilhões lançado por Lula teve <a href="https://www.estadao.com.br/economia/pacote-de-lula-para-estimular-economia-em-ano-de-eleicao-tem-impacto-abaixo-do-esperado/">impacto abaixo do esperado</a>, limitado pelo alto endividamento das famílias e pela cautela dos bancos na concessão de crédito. No campo mais imediato, o Planalto corre contra o relógio para que Lula assine a <a href="https://www.cnnbrasil.com.br/politica/lula-tem-ate-hoje-para-assinar-mp-da-blusinhas-e-evitar-volta-de-imposto/">MP das Blusinhas</a> antes que a cobrança sobre compras internacionais de baixo valor volte a valer.</p>
+
+<h3>Tarifaço e Geopolítica</h3>
+<p>O noticiário econômico internacional segue dominado pela escalada entre Irã e Estados Unidos no Golfo, que já reduz o <a href="https://valor.globo.com/mundo/noticia/2026/09/08/trfego-no-estreito-de-ormuz-desacelera-aps-ameaas-do-ir.ghtml">tráfego de petroleiros no Estreito de Ormuz</a> e ajuda a empurrar o petróleo de volta para perto de US$ 100 — fator que pressiona diretamente a inflação de combustíveis no Brasil. Do lado comercial, as exportações da China cresceram 25% em agosto, um <a href="https://www.poder360.com.br/poder-china/exportacoes-da-china-crescem-25-em-agosto/">salto puxado por tecnologia</a> que é acompanhado de perto por quem opera comércio exterior brasileiro, num momento em que o país segue como parceiro comercial relevante do Brasil.</p>
+
+<h3>Mercado, Inflação e Commodities</h3>
+<p>O Ibovespa tem surpreendido pela resiliência: mesmo com a corrida presidencial acirrada, o índice registra a <a href="https://valor.globo.com/financas/noticia/2026/09/07/ano-de-2026-desafia-padro-eleitoral-e-ibovespa-registra-menor-volatilidade-dos-ltimos-ciclos.ghtml">menor volatilidade dos últimos ciclos eleitorais</a>. Ainda assim, gestores locais reconhecem que o <a href="https://www.cnnbrasil.com.br/economia/money/mercado/risco-fiscal-esta-no-foco-do-trade-eleitoral-diz-especialista/">risco fiscal, e não o resultado da eleição em si, é hoje o principal fator</a> por trás do prêmio de risco embutido nos ativos brasileiros. A gestora Artax, do Itaú, já reagiu <a href="https://valor.globo.com/financas/noticia/2026/09/08/artax-do-itau-reduz-risco-no-brasil-diante-de-aumento-de-incertezas.ghtml">reduzindo posições em ativos domésticos</a> diante do aumento de incertezas. No crédito, os juros elevados seguem cobrando seu preço: as despesas financeiras das empresas <a href="https://oglobo.globo.com/economia/noticia/2026/09/07/juros-elevados-fazem-despesas-financeiras-das-empresas-saltar-12percent-no-2o-trimestre-a-r-99-bilhoes.ghtml">saltaram 12% no segundo trimestre</a>, e bancos vêm <a href="https://oglobo.globo.com/blogs/capital/post/2026/09/acabou-o-oxigenio-bancos-travam-rolagem-de-divida-e-deixam-empresas-no-sufoco.ghtml">travando a rolagem de dívida</a> de companhias mais alavancadas. No campo dos preços, o <a href="https://portalibre.fgv.br/noticias/inflacao-pelo-ipc-s-caiu-037-na-quarta-quadrissemana-de-agosto-de-2026">IPC-S recuou 0,37%</a> na última quadrissemana de agosto, mas a Confiança Empresarial da FGV <a href="https://portalibre.fgv.br/noticias/confianca-empresarial-recua-pelo-segundo-mes-seguido">caiu pelo segundo mês seguido</a>, sinal de que a incerteza eleitoral já contamina a percepção do empresariado sobre o ambiente de negócios — o mesmo empresariado que <a href="https://valor.globo.com/politica/noticia/2026/09/07/empresariado-e-faria-lima-se-mobilizam-apos-crise-do-judiciario.ghtml">na Faria Lima</a> passou a debater abertamente os riscos institucionais da crise no STF.</p>
+
+<h3>Master</h3>
+<p>Sem fato novo dentro da janela de 18h. Como contexto, o caso Banco Master/Vorcaro segue no radar político por via indireta, através de disputas em torno de declarações de candidatos sobre o banqueiro durante a campanha eleitoral, mas nenhum desdobramento direto do processo foi registrado nas últimas 18 horas pelas fontes monitoradas.</p>
+
+<h3>Agenda</h3>
+<p>O calendário oficial de indicadores para os próximos dias inclui divulgações do IBGE: a <a href="https://agenciadenoticias.ibge.gov.br/">Pesquisa Mensal de Serviços (PMS)</a> e a Pesquisa Industrial Mensal regional saem em 10/09, seguidas pelo INPC e pelo IPCA em 11/09 — leituras que devem funcionar como próximo termômetro da inflação num momento de trajetória fiscal sob escrutínio redobrado do mercado.</p>
+
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="filtros">
+          <p class="filtro-label">Temas</p>
+          <div class="chips" id="chipsTemas"></div>
+          <p class="filtro-label">Fontes</p>
+          <div class="chips" id="chipsJornais"></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <p class="contagem" id="contagem"></p>
+        <div id="lista"></div>
+      </main>
+    </div>
+
+    <div class="nota">
+      <strong>Nota da coleta (Brasil):</strong> Coleta realizada por volta das 05h-06h de 08/09/2026 (horário de Brasília) diretamente nas 10 fontes autorizadas via navegação no Chrome. O Banco Central (BCB) não publicou notas à imprensa novas dentro da janela e não contribuiu com itens hoje. Alguns itens da FGV IBRE e do IBGE têm data de publicação levemente anterior às 18h por serem os dados mais recentes disponíveis nas respectivas divulgações periódicas.
+    </div>
+  </div>
+
+  <!-- ===================== ABA INTERNACIONAL ===================== -->
+  <div class="tab-panel" id="tab-intl">
+
+    <div class="resumo-bloco">
+      <button class="btn-resumo" id="btnResumoIntl" aria-expanded="false" aria-controls="resumoCorpoIntl">
+        Resumo do noticiário internacional do dia
+        <span class="seta">▼</span>
+      </button>
+      <div class="resumo-corpo" id="resumoCorpoIntl">
+        <span class="mood-tag">clima do dia: Golfo em escalada, petróleo em alta, iene chacoalhando o câmbio global</span>
+
+<h3>Guerra & Conflitos</h3>
+<p>A troca de ataques entre Estados Unidos e Irã no Golfo Pérsico ganhou mais um capítulo: forças americanas <a href="https://www.wsj.com/world/middle-east/u-s-strikes-three-iranian-ships-after-missiles-fired-at-american-aircraft-carrier-ec5b3d5c">atingiram três navios iranianos</a> depois que mísseis foram disparados contra um porta-aviões dos EUA, enquanto milícias apoiadas por Teerã <a href="https://www.reuters.com/world/middle-east/iran-says-it-plans-new-gulf-exclusion-zone-threatens-us-with-new-missiles-2026-09-08/">atacaram instalações de energia sauditas</a>, ferindo dezenas de pessoas — um raio de ataques que já alcança também o sul da Arábia Saudita, com <a href="https://www.nytimes.com/2026/09/08/world/middleeast/saudi-arabia-yemen-energy-attack.html">dezenas de feridos</a>. O efeito prático já aparece na navegação: o <a href="https://www.reuters.com/world/middle-east/hormuz-traffic-slows-after-iran-threatens-retaliation-us-attacks-2026-09-08/">tráfego no Estreito de Ormuz voltou a desacelerar</a> depois de novas ameaças de retaliação, e os Emirados Árabes já garantem que suas exportações de energia <a href="https://www.reuters.com/world/middle-east/uae-builds-alternative-trade-energy-routes-after-iran-attacks-official-says-2026-09-07/">não ficarão "reféns" da guerra</a>, reforçando rotas alternativas. Em paralelo, Israel intensificou sua campanha contra o Hezbollah no <a href="https://www.nytimes.com/2026/09/07/world/middleeast/israel-lebanon-strikes-hezbollah.html">Líbano</a>, com ataques que já mataram ao menos 12 pessoas numa cidade no sul do país.</p>
+<p>Na Ucrânia, enviados de Trump fizeram uma nova visita a Kiev numa tentativa de reabrir uma janela diplomática para negociações de paz — mas a resposta russa veio rápido: mísseis balísticos <a href="https://www.reuters.com/world/europe/russian-ballistic-missiles-hit-kyiv-us-envoys-leave-2026-09-08/">atingiram a capital ucraniana horas depois</a> de os americanos deixarem o país, matando duas pessoas e sublinhando o quão frágil segue qualquer avanço diplomático na guerra.</p>
+
+<h3>Estados Unidos</h3>
+<p>A pressão comercial de Washington sobre parceiros próximos segue como fio condutor da política externa americana: Trump ameaçou que a Bombardier, fabricante aeroespacial canadense, <a href="https://www.reuters.com/business/aerospace-defense/trump-says-canadas-bombardier-cannot-sell-us-unless-it-builds-there-2026-09-07/">só poderá vender nos EUA se construir jatos em solo americano</a>, escalada que levou o Canadá a não recuar e seguir com <a href="https://www.nytimes.com/2026/09/07/world/canada/tariffs-trade-war-carney-trump.html">tarifas de retaliação</a> que já entraram em vigor. No front doméstico, o Partido Republicano relata receio de que a presença do próprio presidente em campanhas estaduais esteja se tornando <a href="https://www.ft.com/content/3edf3717-4737-424c-9162-d330851edcf6">um fator tóxico</a> para candidatos aliados, enquanto os preços recordes de combustível — turbinados pela crise no Oriente Médio — viram <a href="https://www.wsj.com/business/energy-oil/record-fuel-prices-pose-fresh-challenge-for-trump-ahead-of-midterms-fb433718">dor de cabeça política</a> a poucos meses das eleições de meio de mandato.</p>
+
+<h3>Europa</h3>
+<p>O avanço da AfD numa eleição estadual na Alemanha continua reverberando: o resultado deixou o chanceler Friedrich Merz <a href="https://www.reuters.com/world/europe/far-right-afd-courts-conservative-support-after-historic-german-state-election-2026-09-07/">abalado</a>, com margem cada vez mais estreita para segurar sua coalizão sem recorrer a alianças politicamente arriscadas, e é tratado por analistas como <a href="https://www.ft.com/content/06f51592-d259-4f53-b74c-31279414674d">um resultado ouvido em toda a Europa</a> — um teste ao tradicional "cordão sanitário" dos partidos tradicionais contra a extrema direita, que o <a href="https://www.nytimes.com/2026/09/07/world/europe/germany-afd-election-saxony-anhalt-election.html">Times</a> descreve como nunca tão pressionado. No campo tecnológico, a francesa Mistral captou uma rodada recorde de € 3 bilhões, movimento que o Financial Times descreve como parte do esforço europeu para <a href="https://www.ft.com/content/adbf5262-c4d5-4312-a9b8-4d3cf30c9e00">não ficar para trás na corrida por inteligência artificial</a> frente a EUA e China.</p>
+
+<h3>China</h3>
+<p>As exportações chinesas surpreenderam com um salto de 25% em agosto ante o mesmo mês do ano anterior, avanço puxado por <a href="https://www.reuters.com/world/asia-pacific/chinas-exports-up-25-yy-august-imports-surge-282-2026-09-08/">produtos de alta tecnologia e inteligência artificial</a> que ajuda a sustentar o crescimento do país em meio à guerra comercial em curso com os Estados Unidos. O ritmo das vendas externas em 2026 caminha para um <a href="https://www.ft.com/content/56bcc2fb-99eb-4ad9-af67-101c8d0382cb">superávit comercial anual recorde</a> — um dado que tende a reacender o debate sobre desequilíbrios comerciais globais justamente no momento em que Washington intensifica pressões tarifárias sobre outros parceiros.</p>
+
+<h3>Japão</h3>
+<p>O iene teve uma valorização abrupta que já força o desmonte de posições de carry trade montadas ao longo dos últimos anos, um movimento que a Reuters descreve como capaz de <a href="https://www.reuters.com/world/asia-pacific/yens-sudden-surge-is-upsetting-carry-trade-faithful-2026-09-08/">perturbar os fiéis dessa estratégia</a> em escala global. Por trás da alta da moeda estão dados econômicos mais fortes: os salários reais de julho <a href="https://www.reuters.com/world/asia-pacific/japan-july-real-wages-rise-24-biggest-gain-since-2021-2026-09-07/">subiram 2,4%</a>, o maior ganho desde 2021, e o PIB do segundo trimestre foi <a href="https://www.reuters.com/world/asia-pacific/japan-revises-q2-gdp-up-annualised-14-expansion-2026-09-07/">revisado para cima</a>. O conjunto de dados alimenta apostas de que o Banco do Japão fará uma nova alta de juros ainda em setembro — um assessor próximo à ala reflacionista do governo já <a href="https://www.reuters.com/world/asia-pacific/takaichis-reflationist-aide-projects-bank-japan-rate-hike-september-2026-09-07/">projetou publicamente esse movimento</a> —, mesmo que a Reuters avalie que o banco central prefira <a href="https://www.reuters.com/world/asia-pacific/why-boj-will-bet-small-rate-hikes-now-avoid-bigger-shock-later-2026-09-08/">apostar num ajuste pequeno agora para evitar um choque maior depois</a>. As reservas internacionais japonesas, por sua vez, tiveram a <a href="https://www.reuters.com/world/asia-pacific/japans-august-foreign-reserves-post-largest-ever-drop-after-record-intervention-2026-09-07/">maior queda mensal da história</a> em agosto, reflexo direto da intervenção pesada de Tóquio para conter a volatilidade cambial.</p>
+
+<h3>Reino Unido</h3>
+<p>A ministra das Finanças, Rachel Healey, tenta equilibrar um discurso de crescimento com a necessidade de anunciar medidas fiscais impopulares em outubro — o que a Reuters resume como <a href="https://www.reuters.com/world/uk/uks-finance-minister-healey-walks-fiscal-tightrope-before-first-budget-2026-09-07/">caminhar na corda bamba fiscal</a> antes de seu primeiro orçamento à frente da pasta. Entre as alternativas em discussão para fechar o buraco fiscal estão novas formas de <a href="https://www.reuters.com/world/uk/options-uk-finance-minister-healey-tax-wealth-octobers-budget-2026-09-07/">tributação sobre riqueza</a>. Os dados econômicos que chegam antes do orçamento mostram um quadro misto: as vendas do varejo <a href="https://www.reuters.com/world/uk/uk-retail-sales-growth-slows-4-month-low-august-brc-says-2026-09-07/">desaceleraram para a mínima em quatro meses</a> e os preços dos imóveis <a href="https://www.reuters.com/world/uk/uk-house-prices-fall-first-time-since-november-2023-lloyds-data-shows-2026-09-07/">caíram pela primeira vez desde novembro de 2023</a>, enquanto dados de contratação mostram uma <a href="https://www.ft.com/content/fbe4ff22-59dd-4c80-89d2-7643c01a1ab3">leve melhora na confiança econômica</a>. No câmbio, a libra ficou estável frente ao dólar após o discurso de Healey, mas <a href="https://www.reuters.com/world/uk/sterling-steadies-dollar-traders-digest-healey-speech-tumbles-yen-2026-09-07/">perdeu força de forma expressiva frente ao iene</a>, capturando o efeito cruzado da valorização da moeda japonesa sobre outras divisas.</p>
+
+<h3>Economia Global</h3>
+<p>O petróleo segue em rota de alta, aproximando-se da casa psicológica dos US$ 100 à medida que o mercado precifica o risco de um conflito mais prolongado no Oriente Médio — o Financial Times descreve o movimento como <a href="https://www.ft.com/content/c8167dc7-f472-4846-8005-ee18b23736a8">um novo aperto de oferta se aproximando</a>. Do lado fiscal americano, a trajetória da dívida dos Estados Unidos começa a pesar mais diretamente sobre o custo de financiamento do governo e das empresas do país, conforme <a href="https://www.ft.com/content/8827baa7-163d-4122-9ea8-a2c9ff6e8a4d">análises recentes</a> — um contraponto relevante ao discurso de que só economias emergentes enfrentam prêmio de risco fiscal. Já as receitas petroleiras do Irã seguem <a href="https://www.wsj.com/world/middle-east/irans-oil-dollars-are-drying-upand-plunging-it-deeper-into-crisis-21bae4bd">minguando</a> sob o peso de sanções e do bloqueio a rotas de exportação, aprofundando a crise econômica do país num momento em que mais precisaria de receita para sustentar sua postura militar na região.</p>
+
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="filtros">
+          <p class="filtro-label">Temas</p>
+          <div class="chips" id="chipsTemasIntl"></div>
+          <p class="filtro-label">Fontes</p>
+          <div class="chips" id="chipsFontesIntl"></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <p class="contagem" id="contagemIntl"></p>
+        <div id="listaIntl"></div>
+      </main>
+    </div>
+
+    <div class="nota">
+      <strong>Nota da coleta (Internacional):</strong> Coleta best-effort nas últimas ~18h, realizada diretamente em FT, WSJ, NYT e Reuters (incluindo as subseções dedicadas a Reino Unido e Japão da Reuters). Datas de publicação foram inferidas por URL/timestamp relativo quando disponíveis; itens sem data explícita foram incluídos apenas quando entre os mais recentes das respectivas listagens.
+    </div>
+  </div>
+
+  <!-- ===================== ABA MERCADOS & EMPRESAS ===================== -->
+  <div class="tab-panel" id="tab-merc">
+
+    <div class="resumo-bloco">
+      <button class="btn-resumo" id="btnResumoMerc" aria-expanded="false" aria-controls="resumoCorpoMerc">
+        Resumo do noticiário de mercados e empresas do dia
+        <span class="seta">▼</span>
+      </button>
+      <div class="resumo-corpo" id="resumoCorpoMerc">
+        <span class="mood-tag">clima do dia: crédito caro no Brasil, petróleo pressionado, Europa correndo atrás em IA</span>
+
+<h3>Mercado & Câmbio</h3>
+<p>No Brasil, o Ibovespa segue surpreendendo pela resiliência — mesmo com a corrida presidencial acirrada, o índice tem a <a href="https://valor.globo.com/financas/noticia/2026/09/07/ano-de-2026-desafia-padro-eleitoral-e-ibovespa-registra-menor-volatilidade-dos-ltimos-ciclos.ghtml">menor volatilidade dos últimos ciclos eleitorais</a>. Mas o fôlego fiscal preocupa mais do que o resultado das urnas: analistas <a href="https://www.estadao.com.br/economia/economia-perde-forca-e-mercado-antecipa-para-2034-previsao-de-divida-maior-que-o-pib/">anteciparam para 2034</a> a data em que a dívida pública deve superar o PIB, e gestores locais resumem que hoje é o <a href="https://www.cnnbrasil.com.br/economia/money/mercado/risco-fiscal-esta-no-foco-do-trade-eleitoral-diz-especialista/">risco fiscal, não a eleição em si</a>, que dita o prêmio embutido nos ativos domésticos — leitura que já levou a gestora Artax, do Itaú, a <a href="https://valor.globo.com/financas/noticia/2026/09/08/artax-do-itau-reduz-risco-no-brasil-diante-de-aumento-de-incertezas.ghtml">reduzir posições no país</a>. Lá fora, o grande fator de instabilidade cambial é o iene: sua valorização brusca fez o dólar recuar globalmente e pressionou especialmente a libra esterlina, que <a href="https://www.cnnbrasil.com.br/economia/money/mercado/iene-atinge-maior-valor-7-meses-com-inflacao-e-juros-no-radar/">chegou à máxima em sete meses ante o dólar</a>, num movimento que a China também tenta administrar ao seguir <a href="https://www.ft.com/content/56bcc2fb-99eb-4ad9-af67-101c8d0382cb">rumo a um superávit comercial recorde em 2026</a>. Wall Street fechou em queda com a <a href="https://www.cnnbrasil.com.br/economia/money/mercado/wall-street-fecha-em-queda-com-expectativa-de-aumento-de-juros-pelo-fed/">expectativa de juros mais altos do Fed</a>, e o maior fundo soberano do mundo, o norueguês, avalia <a href="https://www.estadao.com.br/economia/maior-fundo-soberano-do-mundo-quer-se-desfazer-de-us-80-bilhoes-em-titulos-do-tesouro-dos-eua/">se desfazer de US$ 80 bilhões em Treasuries</a> diante da trajetória fiscal americana.</p>
+
+<h3>Bancos & Financeiro</h3>
+<p>O crédito segue mais caro e mais escasso no Brasil: as despesas financeiras das empresas <a href="https://oglobo.globo.com/economia/noticia/2026/09/07/juros-elevados-fazem-despesas-financeiras-das-empresas-saltar-12percent-no-2o-trimestre-a-r-99-bilhoes.ghtml">saltaram 12% no segundo trimestre</a>, a R$ 99 bilhões, e bancos já estão <a href="https://oglobo.globo.com/blogs/capital/post/2026/09/acabou-o-oxigenio-bancos-travam-rolagem-de-divida-e-deixam-empresas-no-sufoco.ghtml">travando a rolagem de dívida</a> de companhias mais alavancadas. Entre os grandes bancos, o Banco do Brasil aparece como o <a href="https://www.poder360.com.br/poder-economia/pressao-da-inadimplencia-sobre-bb-sobe-banco-e-o-mais-afetado/">mais pressionado pela inadimplência</a>, um problema que se espalha também para além do sistema bancário tradicional: apostadores frequentes em bets têm taxa de atraso em pagamentos <a href="https://www1.folha.uol.com.br/mercado/2026/09/apostar-em-bets-aumenta-inadimplencia-e-piora-acesso-ao-credito-diz-estudo.shtml">20% maior, em média</a>, do que a população geral. Nos EUA, a fusão entre EverBank e WaFd cria um banco regional de US$ 75 bilhões em ativos, parte de uma <a href="https://www.wsj.com/business/deals/everbank-to-combine-with-wafd-to-create-75-billion-bank-e71d023c">onda de consolidação no setor</a>.</p>
+
+<h3>Tecnologia & IA</h3>
+<p>A francesa Mistral AI voltou a dominar as manchetes do setor: a companhia captou uma rodada recorde de € 3 bilhões, superando um valuation de US$ 24 bilhões numa operação liderada pela Samsung, movimento que reforça a tentativa europeia de <a href="https://www.ft.com/content/adbf5262-c4d5-4312-a9b8-4d3cf30c9e00">não ficar para trás na corrida por inteligência artificial</a> frente às gigantes americanas — o próprio New York Times descreve a captação como parte de uma <a href="https://www.nytimes.com/2026/09/08/business/mistral-ai-fund-raising.html">mudança de estratégia</a> da startup. No Sudeste Asiático, a Nvidia, via a companhia Firmus, fechou um acordo com a OpenAI para <a href="https://www.reuters.com/world/asia-pacific/nvidia-backed-firmus-signs-deal-with-openai-malaysia-data-centre-capacity-2026-09-08/">capacidade de data center na Malásia</a>, reforçando a corrida global por infraestrutura de IA. No Brasil, um novo vírus digital vem fraudando QR Code, Pix Copia e Cola e cartões em <a href="https://www1.folha.uol.com.br/tec/2026/09/virus-frauda-qr-code-pix-copia-e-cola-e-cartao-em-ecommerces-brasileiros-sem-deixar-vestigio.shtml">e-commerces sem deixar vestígio</a>, um alerta de segurança relevante para um varejo cada vez mais dependente do Pix.</p>
+
+<h3>Varejo & Consumo</h3>
+<p>A varejista chinesa de moda rápida Shein perdeu US$ 5 bilhões em valor de mercado e viveu uma das piores semanas desde sua estreia na bolsa de Hong Kong, um sinal de <a href="https://www1.folha.uol.com.br/mercado/2026/09/shein-perde-us-5-bi-em-valor-de-mercado-e-tem-uma-das-piores-semanas-apos-ipo-em-hong-kong.shtml">ceticismo do mercado</a> poucas semanas após o IPO. No Brasil, a incorporadora You,Inc segue enfrentando dificuldades financeiras, com entregas atrasadas e <a href="https://www.estadao.com.br/economia/negocios/youinc-atrasa-entregas-sofre-com-distratos-e-acumula-patrimonio-negativo-de-r-312-milhoes/">patrimônio negativo de R$ 312 milhões</a>, reflexo do aperto de crédito no setor imobiliário. Já o executivo do Mercado Livre no Brasil defendeu que fatores estruturais, não o resultado da eleição, é que <a href="https://oglobo.globo.com/economia/negocios/noticia/2026/09/07/nao-e-eleicao-que-determina-potencial-do-brasil-diz-executivo-do-mercado-livre.ghtml">determinam o potencial do país</a> para investimentos de longo prazo.</p>
+
+<h3>Indústria & Aviação</h3>
+<p>A britânica Jaguar Land Rover anunciou o corte de 4 mil empregos nos próximos dois anos, citando o peso das <a href="https://www1.folha.uol.com.br/mercado/2026/09/jaguar-land-rover-anuncia-corte-de-4000-empregos-nos-proximos-dois-anos-para-reduzir-custos.shtml">tarifas americanas</a> entre os fatores que levaram à decisão — o Wall Street Journal chega a associar diretamente a medida ao <a href="https://www.wsj.com/business/autos/tata-motors-owned-jlr-plans-redundancy-program-as-it-targets-over-2b-in-savings-4f8fccdb">tarifaço de Trump</a>. Na China, as exportações de automóveis seguem fortes mesmo com as vendas domésticas em queda, uma indústria automotiva cada vez mais <a href="https://www.reuters.com/business/autos-transportation/chinas-car-exports-roar-august-while-domestic-sales-extend-declines-2026-09-08/">dependente do mercado externo</a> para compensar a fraqueza interna.</p>
+
+<h3>Energia & Commodities</h3>
+<p>O petróleo segue em rota de alta, pressionado pela escalada entre EUA e Irã no Golfo: o barril fechou perto de US$ 100 em pregões de menor liquidez e a Reuters descreve o cenário como um <a href="https://www.ft.com/content/c8167dc7-f472-4846-8005-ee18b23736a8">novo aperto de oferta se aproximando</a>. Apesar da escalada, a Opep+ optou por <a href="https://www.nytimes.com/2026/09/06/business/opec-iran-war-oil-production.html">manter a produção estável</a>, uma decisão que reduz a margem para uma alta ainda mais acentuada dos preços. No Brasil, a agência reguladora aprovou 24 novos blocos de exploração na <a href="https://www.estadao.com.br/economia/agencia-reguladora-aprova-24-blocos-de-petroleo-da-bacia-potiguar/">Bacia Potiguar</a>, ampliando o horizonte de investimentos no setor — que segue crucial para as contas públicas: 58,7% dos dividendos de estatais pagos à União em 2026 <a href="https://www.poder360.com.br/poder-economia/587-dos-dividendos-de-estatais-pagos-a-uniao-vieram-da-petrobras/">vieram só da Petrobras</a>.</p>
+
+<h3>Fusões & Aquisições</h3>
+<p>A União Europeia sinalizou que vai facilitar grandes fusões corporativas, um movimento que o Financial Times descreve como <a href="https://www.ft.com/content/7c53cee9-3066-4722-acf6-17daa2f54631">abertura de porta para negócios maiores</a> em Bruxelas. Nos Estados Unidos, a Robinhood assumiu papel de coordenadora na oferta pública inicial da Oura, fabricante de tecnologia vestível, ampliando sua atuação como <a href="https://www.wsj.com/finance/robinhood-wins-a-new-role-in-the-oura-ipo-underwriter-9a76c632">underwriter em Wall Street</a>.</p>
+
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="filtros">
+          <p class="filtro-label">Temas</p>
+          <div class="chips" id="chipsTemasMerc"></div>
+          <p class="filtro-label">Fontes</p>
+          <div class="chips" id="chipsFontesMerc"></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <p class="contagem" id="contagemMerc"></p>
+        <div id="listaMerc"></div>
+      </main>
+    </div>
+
+    <div class="nota">
+      <strong>Nota da coleta (Mercados &amp; Empresas):</strong> Bloco alimentado pelos 14 veículos monitorados (10 brasileiros + FT, WSJ, NYT e Reuters), navegando nas seções de economia/negócios/mercado de cada um. Notícias podem se sobrepor com as abas Brasil e Internacional sob um ângulo diferente (setorial/corporativo) — isso é esperado e não configura duplicação, já que os três arrays de dados são independentes.
+    </div>
+  </div>
+
+  <footer>CLIPPING DE NOTÍCIAS · HENRIQUE ASSUNÇÃO · atualizado 08/09/2026 ~06h05</footer>
+</div>
+
+<script>
+const TEMAS = ["Eleições","Política","Congresso","Fiscal","Economia","Geopolítica","Master","Commodities","Inflação","Mercado"];
+const JORNAIS = ["Valor","O Globo","Folha de SP","Estadão","CNN","Metrópoles","Poder360","BCB","FGV","IBGE"];
+
+const NOTICIAS = [
+{"t": "Quaest: Lula e Flávio empatam com 41% no 2º turno", "r": "Nova rodada da Quaest mostra presidente e senador numericamente empatados no cenário de segundo turno, um recuo de Lula em relação a pesquisas anteriores.", "u": "https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/pesquisa-quaest-lula-e-flavio-estao-numericamente-empatados-com-41percent-no-2o-turno.ghtml", "j": "Valor", "h": "07/09", "tm": ["Eleições"]},
+{"t": "Lula defende soberania, e candidatos da direita miram crise no STF em atos do 7 de Setembro", "r": "Nos discursos do feriado, o presidente tentou capitalizar o tema da soberania nacional enquanto adversários usaram os palanques para pressionar o Supremo.", "u": "https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/lula-defende-soberania-e-candidatos-da-direita-miram-crise-no-stf-em-atos-do-7-de-setembro.ghtml", "j": "Valor", "h": "07/09", "tm": ["Eleições", "Política"]},
+{"t": "Ministros aposentados do STF classificam crise como a 'mais aguda' da história", "r": "Grupo de ex-ministros da Corte, entre eles nomes como Joaquim Barbosa e Rosa Weber, cobrou publicamente uma resposta institucional a Fachin.", "u": "https://valor.globo.com/politica/noticia/2026/09/08/ministros-aposentados-do-stf-classificam-crise-como-a-mais-aguda-da-historia.ghtml", "j": "Valor", "h": "08/09", "tm": ["Política"]},
+{"t": "Empresariado e Faria Lima se mobilizam após crise do Judiciário", "r": "Executivos e investidores paulistanos passaram a debater abertamente os riscos institucionais abertos pelo confronto entre ministros do STF.", "u": "https://valor.globo.com/politica/noticia/2026/09/07/empresariado-e-faria-lima-se-mobilizam-apos-crise-do-judiciario.ghtml", "j": "Valor", "h": "07/09", "tm": ["Política", "Mercado"]},
+{"t": "Na Paulista, Tarcísio cobra explicações de Moraes", "r": "Ao lado de Flávio Bolsonaro, o governador paulista disse que 'ninguém está acima da lei' e pediu explicações públicas do ministro.", "u": "https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/tarcisio-diz-que-ninguem-esta-acima-da-lei-e-cobra-explicacao-de-moraes-em-ato-com-flavio-bolsonaro.ghtml", "j": "Valor", "h": "07/09", "tm": ["Eleições"]},
+{"t": "Tráfego no Estreito de Ormuz desacelera após ameaças do Irã", "r": "Novas ameaças de Teerã à navegação no estreito reduziram o tráfego de petroleiros, fator que já pressiona os preços do petróleo negociados no Brasil.", "u": "https://valor.globo.com/mundo/noticia/2026/09/08/trfego-no-estreito-de-ormuz-desacelera-aps-ameaas-do-ir.ghtml", "j": "Valor", "h": "08/09", "tm": ["Geopolítica", "Commodities"]},
+{"t": "Traders estão errados sobre taxas de juros ou preços, diz estrategista do Deutsche Bank", "r": "Para o banco, o mercado global de juros embute uma contradição entre a trajetória de preços esperada e o ritmo de cortes precificado.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/traders-estao-errados-sobre-taxas-de-juros-ou-precos-diz-estrategista-do-deutsche-bank.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado"]},
+{"t": "Artax, do Itaú, reduz risco no Brasil diante de aumento de incertezas", "r": "A gestora do banco diminuiu posições em ativos domésticos à medida que a corrida eleitoral e a crise no Judiciário elevam a percepção de risco.", "u": "https://valor.globo.com/financas/noticia/2026/09/08/artax-do-itau-reduz-risco-no-brasil-diante-de-aumento-de-incertezas.ghtml", "j": "Valor", "h": "08/09", "tm": ["Mercado"]},
+{"t": "Quaest: Lula lidera 1º turno com 36%, contra 29% de Flávio; Cury marca 8%", "r": "No cenário de primeiro turno, o presidente mantém vantagem, mas o crescimento de Augusto Cury chama atenção como fator de instabilidade na disputa.", "u": "https://oglobo.globo.com/blogs/pulso/post/2026/09/lula-lidera-pesquisa-quaest-no-1o-turno-com-36percent-contra-29percent-de-flavio-cury-marca-8percent.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Eleições"]},
+{"t": "Patamar de brasileiros 'muito endividados' é igual ao do período pré-Desenrola, mostra Quaest", "r": "O levantamento indica que o alívio promovido pelo programa de renegociação de dívidas já foi neutralizado pelo novo ciclo de juros altos.", "u": "https://oglobo.globo.com/blogs/pulso/post/2026/09/patamar-de-brasileiros-que-se-dizem-muito-endividados-e-igual-ao-do-periodo-pre-desenrola-mostra-quaest.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Economia"]},
+{"t": "Com STF em crise, Moraes e demais ministros próximos a Lula devem faltar ao desfile de 7 de Setembro", "r": "A ausência de parte da Corte no evento cívico reforça o desgaste institucional aberto pelo confronto interno entre ministros.", "u": "https://oglobo.globo.com/politica/noticia/2026/09/07/com-stf-em-crise-moraes-e-demais-ministros-da-corte-mais-proximos-a-lula-devem-faltar-ao-desfile-de-7-de-setembro.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Política"]},
+{"t": "Dark Horse: delator confirma 7 pagamentos para fundo de advogado de Eduardo Bolsonaro", "r": "Depoimento colhido em investigação aponta repasses a um fundo ligado à defesa do deputado, elevando a pressão sobre o entorno da família Bolsonaro.", "u": "https://oglobo.globo.com/blogs/malu-gaspar/post/2026/09/dark-horse-delator-confirma-7-pagamentos-para-fundo-de-advogado-de-eduardo-bolsonaro.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Política"]},
+{"t": "Juros elevados fazem despesas financeiras das empresas saltarem 12% no 2º trimestre, a R$ 99 bilhões", "r": "O custo da dívida corporativa voltou a subir com a Selic em patamar restritivo, pressionando margens de companhias listadas.", "u": "https://oglobo.globo.com/economia/noticia/2026/09/07/juros-elevados-fazem-despesas-financeiras-das-empresas-saltar-12percent-no-2o-trimestre-a-r-99-bilhoes.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Economia", "Mercado"]},
+{"t": "'Acabou o oxigênio': bancos travam rolagem de dívida e deixam empresas no sufoco", "r": "Instituições financeiras endureceram critérios de crédito para companhias mais endividadas, um efeito colateral direto dos juros altos.", "u": "https://oglobo.globo.com/blogs/capital/post/2026/09/acabou-o-oxigenio-bancos-travam-rolagem-de-divida-e-deixam-empresas-no-sufoco.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Mercado"]},
+{"t": "Senadores admitem chance de impeachment no STF e veem Alcolumbre à espera das eleições", "r": "Parlamentares que antes descartavam a hipótese passaram a tratá-la como possibilidade real, mas o presidente do Senado prefere esperar o resultado das urnas antes de agir.", "u": "https://www1.folha.uol.com.br/poder/2026/09/senadores-admitem-chance-de-impeachment-no-stf-e-veem-alcolumbre-a-espera-das-eleicoes.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Congresso", "Política"]},
+{"t": "Campanha do PT debate reforma do Judiciário com medidas anticorrupção para se blindar de crise no STF", "r": "Estrategistas do partido avaliam propor mudanças estruturais na Corte como forma de responder ao desgaste da crise institucional.", "u": "https://www1.folha.uol.com.br/poder/2026/09/campanha-do-pt-debate-reforma-do-judiciario-com-medidas-anticorrupcao-para-se-blindar-de-crise-no-stf.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Política"]},
+{"t": "Sem citar Moraes, ex-presidentes do STF pedem ação de Fachin e falam em 'mais aguda' crise da Corte", "r": "Nomes como Joaquim Barbosa, Celso de Mello e Rosa Weber assinaram carta cobrando uma resposta institucional a fatos que classificam como gravíssimos.", "u": "https://www1.folha.uol.com.br/poder/2026/09/ex-presidentes-do-stf-pedem-acao-de-fachin-e-falam-em-mais-aguda-crise-da-corte.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Política"]},
+{"t": "Quaest: Lula e Flávio Bolsonaro empatam numericamente em cenário de 2º turno", "r": "A pesquisa consolida a percepção de corrida acirrada às vésperas da reta final da campanha.", "u": "https://www1.folha.uol.com.br/poder/2026/09/quaest-lula-e-flavio-bolsonaro-empatam-numericamente-em-cenario-de-2o-turno.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Eleições"]},
+{"t": "Petróleo supera US$ 98 após ataques a petroleiros e refinaria no Oriente Médio", "r": "O tráfego no Estreito de Hormuz caiu ao menor nível desde maio depois de uma nova onda de ataques na região.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/trafego-no-estreito-de-hormuz-cai-ao-menor-nivel-desde-maio-apos-ataques-a-petroleiros.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Commodities", "Geopolítica"]},
+{"t": "STF decide que INSS pode definir teto de juros do consignado", "r": "A decisão dá ao instituto poder para fixar limites nas taxas cobradas em empréstimos consignados a aposentados e pensionistas.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/stf-decide-que-inss-pode-definir-teto-de-juros-do-consignado-entenda.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Mercado"]},
+{"t": "Presidente da OAB pede transparência e cobra respostas do STF em meio à crise na Corte", "r": "Beto Simonetti afirmou que a confiança nas instituições precisa ser restabelecida com verdade e isenção diante do episódio Moraes-Mendonça.", "u": "https://www.estadao.com.br/politica/presidente-da-oab-pede-transparencia-e-cobra-respostas-do-stf-em-meio-a-crise-na-corte/", "j": "Estadão", "h": "07/09", "tm": ["Política"]},
+{"t": "Moraes vira principal personagem do 7 de Setembro; urnas vão definir futuro do STF", "r": "Lula tenta um acordo entre as alas internas da Corte, enquanto Flávio Bolsonaro ergue a bandeira do impeachment de ministros como aposta eleitoral.", "u": "https://www.estadao.com.br/politica/coluna-do-estadao/moraes-vira-principal-personagem-7-setembro-urnas-vao-definir-futuro-stf/", "j": "Estadão", "h": "07/09", "tm": ["Eleições", "Política"]},
+{"t": "Na Quaest, Flávio não avança, mas desaprovação de Lula chega a 50%, puxada pela economia", "r": "A queda de popularidade do presidente é atribuída ao aperto no orçamento das famílias, mais do que à discussão sobre dívida pública.", "u": "https://www.estadao.com.br/politica/eliane-cantanhede/na-quaest-flavio-nao-avanca-lula-e-que-corroi-seu-favoritismo-e-anda-de-re/", "j": "Estadão", "h": "07/09", "tm": ["Eleições", "Economia"]},
+{"t": "PF encontra com lobista novas minutas de decisões de mais quatro gabinetes do STJ", "r": "A investigação sobre venda de sentenças no tribunal avança e amplia o número de gabinetes sob suspeita de influência externa.", "u": "https://www.estadao.com.br/politica/pf-encontra-com-lobista-novas-minutas-de-decisoes-de-outros-quatro-gabinetes-de-ministros-do-stj/", "j": "Estadão", "h": "07/09", "tm": ["Política"]},
+{"t": "Pacote de estímulos de R$ 200 bilhões de Lula tem impacto abaixo do esperado", "r": "O alto endividamento das famílias e a cautela dos bancos limitaram o efeito do pacote lançado em ano eleitoral sobre o crescimento.", "u": "https://www.estadao.com.br/economia/pacote-de-lula-para-estimular-economia-em-ano-de-eleicao-tem-impacto-abaixo-do-esperado/", "j": "Estadão", "h": "07/09", "tm": ["Fiscal", "Economia"]},
+{"t": "Economia perde força e mercado antecipa para 2034 previsão de dívida maior que o PIB", "r": "Analistas anteciparam em vários anos a data em que a dívida pública bruta deve superar o tamanho da economia brasileira.", "u": "https://www.estadao.com.br/economia/economia-perde-forca-e-mercado-antecipa-para-2034-previsao-de-divida-maior-que-o-pib/", "j": "Estadão", "h": "07/09", "tm": ["Fiscal", "Mercado"]},
+{"t": "STF vê atos do 7/9 esvaziados e mantém ritmo sobre caso Moraes", "r": "Ministros da Corte avaliaram que a mobilização de rua teve adesão menor que a esperada e devem manter o cronograma de apuração do caso.", "u": "https://www.cnnbrasil.com.br/politica/stf-ve-atos-do-7-9-esvaziados-e-ritmo-mantido-sobre-caso-moraes/", "j": "CNN", "h": "08/09", "tm": ["Política"]},
+{"t": "Ala do STF aposta em decisão sobre Moraes e Mendonça só após as eleições", "r": "Um grupo de ministros defende adiar qualquer desfecho do episódio para depois do segundo turno, buscando isolar a crise da disputa presidencial.", "u": "https://www.cnnbrasil.com.br/politica/ala-do-stf-aposta-em-decisao-sobre-moraes-e-mendonca-so-apos-as-eleicoes/", "j": "CNN", "h": "08/09", "tm": ["Política"]},
+{"t": "Fachin cancela reunião com dirigentes da OAB em meio à crise no STF", "r": "O adiamento do encontro é lido como sinal de que o presidente da Corte ainda não tem uma resposta pronta para dar à entidade.", "u": "https://www.cnnbrasil.com.br/politica/fachin-cancela-reuniao-com-dirigentes-da-oab-em-meio-a-crise-no-stf/", "j": "CNN", "h": "08/09", "tm": ["Política"]},
+{"t": "Quaest: 50% desaprovam governo Lula; 43% aprovam", "r": "A pesquisa consolida um cenário de desgaste da avaliação presidencial às vésperas da fase decisiva da campanha.", "u": "https://www.cnnbrasil.com.br/politica/quaest-50-desaprovam-governo-lula-43-aprovam/", "j": "CNN", "h": "08/09", "tm": ["Eleições"]},
+{"t": "Lula tem até hoje para assinar MP das Blusinhas e evitar volta de imposto", "r": "O prazo apertado põe pressão sobre o Planalto para destravar a medida antes que a cobrança sobre compras internacionais de baixo valor volte a valer.", "u": "https://www.cnnbrasil.com.br/politica/lula-tem-ate-hoje-para-assinar-mp-da-blusinhas-e-evitar-volta-de-imposto/", "j": "CNN", "h": "08/09", "tm": ["Fiscal"]},
+{"t": "Crise no STF: próximo presidente poderá indicar até quatro ministros", "r": "A conjuntura de aposentadorias previstas para os próximos anos torna o resultado da eleição presidencial decisivo para a composição futura da Corte.", "u": "https://www.metropoles.com/brasil/crise-stf-presidente-ministros", "j": "Metrópoles", "h": "08/09", "tm": ["Política", "Eleições"]},
+{"t": "Direita pressiona STF e Alcolumbre no 7/9; esquerda foca na soberania", "r": "Os discursos do feriado mostraram estratégias opostas: um lado mirou a crise institucional, o outro tentou desviar o foco para o tema nacionalista.", "u": "https://www.metropoles.com/brasil/direita-pressiona-stf-e-alcolumbre-no-7-9-esquerda-foca-na-soberania", "j": "Metrópoles", "h": "08/09", "tm": ["Eleições"]},
+{"t": "Por impeachment de Moraes, Alcolumbre e Flávio entram em rota de colisão", "r": "O presidente do Senado resiste a dar andamento a pedidos de impeachment contra o ministro, o que já gera atrito público com o candidato do PL.", "u": "https://www.metropoles.com/brasil/por-impeachment-de-moraes-alcolumbre-e-flavio-entram-em-rota-de-colisao", "j": "Metrópoles", "h": "08/09", "tm": ["Congresso", "Política"]},
+{"t": "Ex-ministros do STF pedem a Fachin 'apuração rigorosa' de crise na Corte", "r": "O movimento de ex-integrantes do tribunal amplia a pressão institucional por uma resposta formal ao confronto entre Moraes e Mendonça.", "u": "https://www.metropoles.com/brasil/ex-ministros-do-stf-pedem-a-fachin-apuracao-rigososa-sobre-crise-na-corte", "j": "Metrópoles", "h": "08/09", "tm": ["Política"]},
+{"t": "Zema é hostilizado ao caminhar na Paulista durante ato do 7 de Setembro", "r": "O episódio expõe as fissuras dentro do próprio campo bolsonarista às vésperas da definição de candidaturas.", "u": "https://www.metropoles.com/brasil/zema-e-hostilizado-ao-caminhar-na-paulista-durante-ato-do-7-de-setembro", "j": "Metrópoles", "h": "08/09", "tm": ["Eleições"]},
+{"t": "Flávio diz que vai indicar 5 ministros ao STF porque 'Moraes vai cair'", "r": "A declaração eleva o tom da ofensiva do senador contra a Corte e sinaliza uma futura reconfiguração do tribunal caso ele vença a eleição.", "u": "https://www.poder360.com.br/poder-eleicoes-2026/vou-indicar-5-ministros-ao-stf-porque-moraes-vai-cair-afirma-flavio/", "j": "Poder360", "h": "07/09", "tm": ["Eleições"]},
+{"t": "Sob frio de 14ºC, Flávio reúne 32.400 pessoas na Avenida Paulista", "r": "O ato de 7 de Setembro se tornou vitrine da força de mobilização da candidatura de Flávio Bolsonaro em São Paulo.", "u": "https://www.poder360.com.br/poder-eleicoes-2026/sob-frio-de-14-oc-flavio-reune-34-200-na-avenida-paulista/", "j": "Poder360", "h": "07/09", "tm": ["Eleições"]},
+{"t": "Planalto e STF negociam preservar Moraes até depois da eleição", "r": "Interlocutores do governo e da Corte discutem uma solução que evite qualquer desfecho do caso antes do segundo turno.", "u": "https://www.poder360.com.br/poder-justica/planalto-e-supremo-negociam-preservar-moraes-ate-depois-da-eleicao/", "j": "Poder360", "h": "08/09", "tm": ["Política"]},
+{"t": "13 ministros aposentados do STF pedem 'rigorosa apuração' a Fachin", "r": "O número de assinantes do pedido reforça o tamanho da pressão institucional dentro do próprio Judiciário.", "u": "https://www.poder360.com.br/poder-justica/13-ministros-aposentados-do-stf-pedem-rigorosa-apuracao-a-fachin/", "j": "Poder360", "h": "08/09", "tm": ["Política"]},
+{"t": "Contas do governo pioram com Dario Durigan", "r": "A gestão do novo secretário do Tesouro é associada a uma deterioração adicional do resultado fiscal, tema sensível em ano eleitoral.", "u": "https://www.poder360.com.br/poder-economia/contas-do-governo-pioram-com-dario-durigan/", "j": "Poder360", "h": "08/09", "tm": ["Fiscal"]},
+{"t": "Exportações da China crescem 25% em agosto", "r": "O salto das vendas externas chinesas, puxado por tecnologia e produtos de alto valor agregado, é acompanhado de perto por analistas do comércio exterior brasileiro.", "u": "https://www.poder360.com.br/poder-china/exportacoes-da-china-crescem-25-em-agosto/", "j": "Poder360", "h": "08/09", "tm": ["Geopolítica", "Commodities"]},
+{"t": "Inflação pelo IPC-S caiu 0,37% na quarta quadrissemana de agosto de 2026", "r": "O indicador prévio de preços da FGV mostrou recuo, mas o quadro segue heterogêneo entre as capitais pesquisadas.", "u": "https://portalibre.fgv.br/noticias/inflacao-pelo-ipc-s-caiu-037-na-quarta-quadrissemana-de-agosto-de-2026", "j": "FGV", "h": "01/09", "tm": ["Inflação"]},
+{"t": "Confiança Empresarial recua pelo segundo mês seguido", "r": "O Índice de Confiança Empresarial da FGV IBRE aponta piora na percepção dos empresários sobre o ambiente de negócios em meio à incerteza eleitoral.", "u": "https://portalibre.fgv.br/noticias/confianca-empresarial-recua-pelo-segundo-mes-seguido", "j": "FGV", "h": "02/09", "tm": ["Economia"]},
+{"t": "Trabalhadores de transporte de passageiros por aplicativo chegam a 1,2 milhão de pessoas no país", "r": "Dado da PNAD Contínua do IBGE mostra a dimensão que o trabalho por aplicativo já assumiu no mercado de trabalho brasileiro.", "u": "https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/47966-trabalhadores-de-transporte-de-passageiros-por-aplicativo-chegam-a-1-2-milhao-de-pessoas-no-pais", "j": "IBGE", "h": "04/09", "tm": ["Economia"]},
+{"t": "Ano de 2026 desafia padrão e Ibovespa registra menor volatilidade dos últimos ciclos eleitorais", "r": "Mesmo com a corrida presidencial acirrada, o índice brasileiro tem se mostrado mais estável que em pleitos anteriores.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/ano-de-2026-desafia-padro-eleitoral-e-ibovespa-registra-menor-volatilidade-dos-ltimos-ciclos.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado"]},
+{"t": "Risco fiscal está no foco do 'trade eleitoral', diz especialista", "r": "Gestores locais afirmam que o prêmio de risco embutido nos ativos brasileiros hoje reflete primeiro a trajetória fiscal, e só depois o resultado da corrida presidencial.", "u": "https://www.cnnbrasil.com.br/economia/money/mercado/risco-fiscal-esta-no-foco-do-trade-eleitoral-diz-especialista/", "j": "CNN", "h": "07/09", "tm": ["Mercado"]}
+];
+
+const NOTICIAS_INTL = [
+{"t": "Iran-backed Houthis attack Saudi energy facilities, wounding dozens", "r": "O ataque eleva ainda mais a tensão no Golfo poucos dias depois de trocas de mísseis entre EUA e Irã na região.", "u": "https://www.reuters.com/world/middle-east/iran-says-it-plans-new-gulf-exclusion-zone-threatens-us-with-new-missiles-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Russia hits Kyiv after brief pause for US envoys' visit, killing two", "r": "Mísseis balísticos atingiram a capital ucraniana horas depois de enviados americanos deixarem o país em nova rodada de diplomacia de paz.", "u": "https://www.reuters.com/world/europe/russian-ballistic-missiles-hit-kyiv-us-envoys-leave-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Hormuz traffic slows after Iran threatens retaliation for US attacks", "r": "A queda no tráfego de petroleiros no estreito é um dos termômetros mais diretos do risco geopolítico sobre o mercado de energia.", "u": "https://www.reuters.com/world/middle-east/hormuz-traffic-slows-after-iran-threatens-retaliation-us-attacks-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Israeli strikes on southern Lebanese town kill 12 as fears of escalation mount", "r": "A intensificação dos bombardeios israelenses no Líbano soma-se à escalada regional puxada pela crise no Golfo.", "u": "https://www.reuters.com/world/middle-east/israeli-strikes-southern-lebanese-town-kill-11-state-news-agency-says-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Guerra & Conflitos"]},
+{"t": "UAE says its energy exports will not be 'held hostage' by Iran war", "r": "Abu Dhabi reforça rotas alternativas de exportação de energia para se blindar de um eventual fechamento prolongado de Ormuz.", "u": "https://www.reuters.com/world/middle-east/uae-builds-alternative-trade-energy-routes-after-iran-attacks-official-says-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Guerra & Conflitos", "Economia Global"]},
+{"t": "Oil rises as risks of prolonged Mideast conflict fan supply worries", "r": "O petróleo se aproxima da casa dos US$ 100 com o mercado precificando um conflito mais longo no Oriente Médio.", "u": "https://www.reuters.com/business/energy/oil-rises-risks-prolonged-mideast-conflict-heighten-supply-worries-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Economia Global"]},
+{"t": "Far-right win leaves Germany's Merz shaken as AfD plots path to power", "r": "O resultado eleitoral na Alemanha reacende o debate sobre o 'cordão sanitário' contra a extrema direita em toda a Europa.", "u": "https://www.reuters.com/world/europe/far-right-afd-courts-conservative-support-after-historic-german-state-election-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Europa"]},
+{"t": "UK to announce a trade ban on Israeli West Bank goods", "r": "A medida britânica marca um endurecimento da postura do Reino Unido em relação aos assentamentos israelenses na Cisjordânia.", "u": "https://www.reuters.com/world/uk/uk-announce-trade-ban-israeli-west-bank-goods-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Reino Unido"]},
+{"t": "UK retail sales growth slows to 4-month low in August, BRC says", "r": "O dado reforça a fragilidade do consumo britânico às vésperas de um orçamento fiscal considerado especialmente duro.", "u": "https://www.reuters.com/world/uk/uk-retail-sales-growth-slows-4-month-low-august-brc-says-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Reino Unido"]},
+{"t": "UK finance minister Healey seeks to set out brighter vision before tough budget", "r": "A ministra das Finanças tenta equilibrar um discurso de crescimento com a necessidade de anunciar medidas fiscais impopulares em outubro.", "u": "https://www.reuters.com/world/uk/uk-finance-minister-healey-seeks-growth-through-decentralising-power-2026-09-06/", "j": "Reuters", "h": "06/09", "tm": ["Reino Unido"]},
+{"t": "Options for Healey to tax wealth", "r": "Entre as alternativas discutidas em Londres para fechar o buraco fiscal estão novas formas de tributação sobre riqueza e patrimônio.", "u": "https://www.reuters.com/world/uk/options-uk-finance-minister-healey-tax-wealth-octobers-budget-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Reino Unido"]},
+{"t": "UK house prices fall for first time since November 2023, Lloyds data shows", "r": "A queda nos preços dos imóveis é mais um sinal de desaceleração da economia britânica antes do orçamento de outubro.", "u": "https://www.reuters.com/world/uk/uk-house-prices-fall-first-time-since-november-2023-lloyds-data-shows-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Reino Unido"]},
+{"t": "Healey walks fiscal tightrope before first budget", "r": "A ministra tenta convencer mercados e eleitores de que consegue equilibrar consolidação fiscal com crescimento, num contexto de dívida elevada.", "u": "https://www.reuters.com/world/uk/uks-finance-minister-healey-walks-fiscal-tightrope-before-first-budget-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Reino Unido"]},
+{"t": "Sterling steadies on dollar as traders digest Healey speech, tumbles on yen", "r": "A libra teve reação mista: estabilidade frente ao dólar, mas perdas expressivas ante um iene em forte valorização.", "u": "https://www.reuters.com/world/uk/sterling-steadies-dollar-traders-digest-healey-speech-tumbles-yen-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Reino Unido", "Japão"]},
+{"t": "Why the BOJ will bet small on rate hikes now to avoid a bigger shock later", "r": "O banco central japonês deve preferir um ajuste gradual dos juros para não desestabilizar mercados que já reagem à valorização do iene.", "u": "https://www.reuters.com/world/asia-pacific/why-boj-will-bet-small-rate-hikes-now-avoid-bigger-shock-later-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Japão"]},
+{"t": "The yen's sudden surge is upsetting the carry trade faithful", "r": "A alta abrupta da moeda japonesa forçou o desmonte de posições de carry trade montadas ao longo dos últimos anos.", "u": "https://www.reuters.com/world/asia-pacific/yens-sudden-surge-is-upsetting-carry-trade-faithful-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Japão"]},
+{"t": "Japan upgrades second-quarter GDP on slight capex improvement", "r": "A revisão para cima do PIB do segundo trimestre reforça a leitura de uma economia japonesa em recuperação moderada.", "u": "https://www.reuters.com/world/asia-pacific/japan-revises-q2-gdp-up-annualised-14-expansion-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Japão"]},
+{"t": "Japan July real wages rise 2.4%, biggest gain since 2021", "r": "O salário real japonês registrou o maior avanço em quatro anos, dado que alimenta as apostas de uma nova alta de juros do BOJ.", "u": "https://www.reuters.com/world/asia-pacific/japan-july-real-wages-rise-24-biggest-gain-since-2021-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Japão"]},
+{"t": "Japan's August foreign reserves post largest-ever drop after record intervention", "r": "O tombo recorde nas reservas reflete a intervenção pesada de Tóquio para conter a volatilidade cambial no mês passado.", "u": "https://www.reuters.com/world/asia-pacific/japans-august-foreign-reserves-post-largest-ever-drop-after-record-intervention-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Japão"]},
+{"t": "Takaichi's reflationist aide projects Bank of Japan rate hike in September", "r": "Um assessor próximo à ala reflacionista do governo japonês afirmou esperar uma nova alta de juros ainda neste mês.", "u": "https://www.reuters.com/world/asia-pacific/takaichis-reflationist-aide-projects-bank-japan-rate-hike-september-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Japão"]},
+{"t": "China's exports surge as demand for high-tech, AI help prop up economic growth", "r": "O salto de 25% nas exportações chinesas em agosto, puxado por produtos de tecnologia, ajuda a sustentar o crescimento em meio à guerra comercial.", "u": "https://www.reuters.com/world/asia-pacific/chinas-exports-up-25-yy-august-imports-surge-282-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["China", "Economia Global"]},
+{"t": "Canada's retaliatory tariffs take effect as US trade talks stall", "r": "Ottawa avançou com as tarifas de retaliação depois que as negociações comerciais com Washington travaram novamente.", "u": "https://www.reuters.com/business/autos-transportation/canadas-retaliatory-tariffs-take-effect-us-trade-talks-stall-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Estados Unidos", "Economia Global"]},
+{"t": "Trump says Canada's Bombardier must build jets in US or lose market access", "r": "A ameaça eleva o tom do embate comercial entre os dois países e mira diretamente uma das maiores fabricantes aeroespaciais canadenses.", "u": "https://www.reuters.com/business/aerospace-defense/trump-says-canadas-bombardier-cannot-sell-us-unless-it-builds-there-2026-09-07/", "j": "Reuters", "h": "07/09", "tm": ["Estados Unidos"]},
+{"t": "Billionaire trader Rokos to leave UK for Greece", "r": "A mudança de um dos gestores de fundos mais conhecidos de Londres é lida como mais um sinal de fuga de capital diante da carga tributária britânica.", "u": "https://www.ft.com/content/43efa6c1-6b37-4ddc-9a1d-b085bfbdba06", "j": "Financial Times", "h": "08/09", "tm": ["Reino Unido"]},
+{"t": "Republicans fear Trump has turned toxic on the campaign trail", "r": "Estrategistas do Partido Republicano relatam receio de que a presença do presidente em campanhas estaduais esteja prejudicando candidatos aliados.", "u": "https://www.ft.com/content/3edf3717-4737-424c-9162-d330851edcf6", "j": "Financial Times", "h": "08/09", "tm": ["Estados Unidos"]},
+{"t": "A German election result heard around the world", "r": "O avanço da AfD numa eleição estadual é tratado como sintoma de uma tendência que atravessa fronteiras na Europa.", "u": "https://www.ft.com/content/06f51592-d259-4f53-b74c-31279414674d", "j": "Financial Times", "h": "08/09", "tm": ["Europa"]},
+{"t": "Why America's debt binge is starting to matter", "r": "A trajetória da dívida americana começa a pesar mais diretamente sobre o custo de financiamento do governo e das empresas dos EUA.", "u": "https://www.ft.com/content/8827baa7-163d-4122-9ea8-a2c9ff6e8a4d", "j": "Financial Times", "h": "08/09", "tm": ["Estados Unidos", "Economia Global"]},
+{"t": "UK hiring picks up in latest hint of improving economic confidence", "r": "Dados de contratação mostram uma leve melhora, contraponto pontual num quadro dominado pela expectativa de um orçamento apertado.", "u": "https://www.ft.com/content/fbe4ff22-59dd-4c80-89d2-7643c01a1ab3", "j": "Financial Times", "h": "08/09", "tm": ["Reino Unido"]},
+{"t": "After Far-Right Triumph, Merz Faces Narrow Path to Save His Government", "r": "O chanceler alemão tem margem cada vez mais estreita para conter o avanço da AfD sem recorrer a alianças politicamente arriscadas.", "u": "https://www.wsj.com/world/europe/after-far-right-triumph-merz-faces-narrow-path-to-save-his-government-670f62c7", "j": "Wall Street Journal", "h": "07/09", "tm": ["Europa"]},
+{"t": "U.S. Strikes Three Iranian Ships After Missiles Fired at American Aircraft Carrier", "r": "A resposta militar americana marca uma nova escalada direta entre Washington e Teerã no Golfo Pérsico.", "u": "https://www.wsj.com/world/middle-east/u-s-strikes-three-iranian-ships-after-missiles-fired-at-american-aircraft-carrier-ec5b3d5c", "j": "Wall Street Journal", "h": "08/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Iran's Oil Dollars Are Drying Up—and Plunging It Deeper Into Crisis", "r": "O aperto de sanções e o bloqueio a rotas de exportação reduzem a receita petroleira iraniana justamente quando o país mais precisa dela.", "u": "https://www.wsj.com/world/middle-east/irans-oil-dollars-are-drying-upand-plunging-it-deeper-into-crisis-21bae4bd", "j": "Wall Street Journal", "h": "08/09", "tm": ["Guerra & Conflitos", "Economia Global"]},
+{"t": "Trump Envoys Visit Ukraine in New Push for Peace Talks", "r": "A visita de enviados americanos a Kiev reabre uma janela diplomática, mesmo com os bombardeios russos que se seguiram poucas horas depois.", "u": "https://www.wsj.com/world/europe/trump-envoys-visit-ukraine-in-new-push-for-peace-talks-ee01b34e", "j": "Wall Street Journal", "h": "07/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Record Fuel Prices Pose Fresh Challenge for Trump Ahead of Midterms", "r": "A alta dos combustíveis, turbinada pela crise no Oriente Médio, vira dor de cabeça política para a Casa Branca a poucos meses das eleições de meio de mandato.", "u": "https://www.wsj.com/business/energy-oil/record-fuel-prices-pose-fresh-challenge-for-trump-ahead-of-midterms-fb433718", "j": "Wall Street Journal", "h": "08/09", "tm": ["Estados Unidos"]},
+{"t": "Israel Launches Deadly Strikes in Lebanon as Military Campaign Intensifies", "r": "A ofensiva israelense contra o Hezbollah no Líbano ganha intensidade em paralelo à escalada no Golfo.", "u": "https://www.nytimes.com/2026/09/07/world/middleeast/israel-lebanon-strikes-hezbollah.html", "j": "NY Times", "h": "07/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Germany's 'Firewall' Against the Far Right Is Being Tested as Never Before", "r": "A tradicional barreira política dos partidos tradicionais alemães contra a extrema direita enfrenta sua prova mais dura em décadas.", "u": "https://www.nytimes.com/2026/09/07/world/europe/germany-afd-election-saxony-anhalt-election.html", "j": "NY Times", "h": "07/09", "tm": ["Europa"]},
+{"t": "Britain Set to Impose Trade Ban on Israeli West Bank Settlements", "r": "A decisão britânica se soma a um movimento mais amplo de países europeus endurecendo a postura sobre os assentamentos.", "u": "https://www.nytimes.com/2026/09/07/world/middleeast/britain-sanctions-israeli-settlers.html", "j": "NY Times", "h": "07/09", "tm": ["Reino Unido"]},
+{"t": "Brushing Aside Trump's Threats, Canada Retaliates on Tariffs", "r": "Ottawa optou por não recuar diante das ameaças de Washington e seguiu em frente com a retaliação tarifária.", "u": "https://www.nytimes.com/2026/09/07/world/canada/tariffs-trade-war-carney-trump.html", "j": "NY Times", "h": "07/09", "tm": ["Estados Unidos"]},
+{"t": "Houthi Strikes on Southern Saudi Arabia Injure Dozens, Saudi Officials Say", "r": "O ataque a instalações de energia sauditas amplia o raio da escalada militar patrocinada pelo Irã na região do Golfo.", "u": "https://www.nytimes.com/2026/09/08/world/middleeast/saudi-arabia-yemen-energy-attack.html", "j": "NY Times", "h": "08/09", "tm": ["Guerra & Conflitos"]},
+{"t": "Mistral raises record €3bn as Europe strains to keep pace in AI race", "r": "A captação bilionária da startup francesa é vista como resposta europeia à disputa tecnológica dominada por EUA e China.", "u": "https://www.ft.com/content/adbf5262-c4d5-4312-a9b8-4d3cf30c9e00", "j": "Financial Times", "h": "08/09", "tm": ["Europa"]},
+{"t": "China's export surge sets stage for record annual surplus", "r": "O ritmo das exportações chinesas em 2026 caminha para um superávit comercial recorde, tema sensível na relação com Washington.", "u": "https://www.ft.com/content/56bcc2fb-99eb-4ad9-af67-101c8d0382cb", "j": "Financial Times", "h": "08/09", "tm": ["China", "Economia Global"]},
+{"t": "Oil closes in on $100 as renewed supply crunch looms", "r": "O barril se aproxima da marca psicológica dos US$ 100 com o mercado global reagindo à escalada no Golfo Pérsico.", "u": "https://www.ft.com/content/c8167dc7-f472-4846-8005-ee18b23736a8", "j": "Financial Times", "h": "08/09", "tm": ["Economia Global"]}
+];
+
+const NOTICIAS_MERC = [
+{"t": "Mistral AI supera valuation de US$ 24 bi após rodada liderada pela Samsung", "r": "A startup francesa de IA generativa capta uma nova rodada bilionária, reforçando a corrida europeia para não ficar para trás na disputa tecnológica.", "u": "https://valor.globo.com/empresas/noticia/2026/09/08/mistral-ai-supera-valuation-de-us-24-bi-aps-rodada-liderada-pela-samsung.ghtml", "j": "Valor", "h": "08/09", "tm": ["Tecnologia & IA"]},
+{"t": "Amazon é processada por suposto esquema secreto de sobretaxas em publicidade", "r": "A ação judicial questiona práticas da varejista na cobrança de anunciantes na sua plataforma de publicidade digital.", "u": "https://valor.globo.com/empresas/noticia/2026/09/07/amazon-e-processada-por-suposto-esquema-secreto-de-sobretaxas-em-publicidade.ghtml", "j": "Valor", "h": "07/09", "tm": ["Tecnologia & IA"]},
+{"t": "Traders estão errados sobre taxas de juros ou preços, diz estrategista do Deutsche Bank", "r": "A leitura do banco alemão sobre a inconsistência entre juros e inflação precificados tem implicações diretas para o câmbio global.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/traders-estao-errados-sobre-taxas-de-juros-ou-precos-diz-estrategista-do-deutsche-bank.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Petróleo fecha em alta e volta a se aproximar de US$ 100 em pregão de menor liquidez", "r": "A commodity segue pressionada pela escalada entre EUA e Irã no Golfo, com liquidez reduzida amplificando os movimentos de preço.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/petroleo-fecha-em-alta-e-volta-a-se-aproximar-de-us-100-em-pregao-de-menor-liquidez.ghtml", "j": "Valor", "h": "07/09", "tm": ["Energia & Commodities"]},
+{"t": "Ano de 2026 desafia padrão e Ibovespa registra menor volatilidade dos últimos ciclos eleitorais", "r": "Mesmo com a corrida presidencial acirrada, o índice brasileiro tem se mostrado mais estável que em pleitos anteriores.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/ano-de-2026-desafia-padro-eleitoral-e-ibovespa-registra-menor-volatilidade-dos-ltimos-ciclos.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Homem mais rico da África planeja maior IPO do continente", "r": "A operação bilionária deve testar o apetite de investidores globais por ativos africanos num momento de juros ainda elevados no mundo desenvolvido.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/homem-mais-rico-da-africa-planeja-maior-ipo-do-continente.ghtml", "j": "Valor", "h": "07/09", "tm": ["Fusões & Aquisições"]},
+{"t": "Proprietária da maior operadora de telefonia móvel da Índia se prepara para IPO de até US$ 4 bilhões", "r": "A oferta faria parte de uma onda de aberturas de capital em mercados emergentes asiáticos neste segundo semestre.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/proprietaria-da-maior-operadora-de-telefonia-movel-da-india-se-prepara-para-ipo-de-ate-us-4-bilhoes.ghtml", "j": "Valor", "h": "07/09", "tm": ["Fusões & Aquisições", "Tecnologia & IA"]},
+{"t": "China eleva reservas de ouro apesar de preços em alta", "r": "O banco central chinês ampliou suas reservas do metal mesmo com a cotação elevada, um sinal de diversificação de reservas frente ao dólar.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/bc-da-china-registra-maior-aumento-nas-reservas-de-ouro-desde-2023-mesmo-com-alta-dos-precos.ghtml", "j": "Valor", "h": "07/09", "tm": ["Energia & Commodities"]},
+{"t": "Iene atinge máxima de sete meses ante o dólar", "r": "A valorização da moeda japonesa reverbera em mercados emergentes e reforça apostas de alta de juros do Banco do Japão.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/iene-atinge-maxima-de-sete-meses-ante-o-dolar.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Bancos ampliam cardápio com avanço da regulação de criptomoedas", "r": "Instituições financeiras tradicionais passam a oferecer mais produtos ligados a criptoativos a clientes à medida que o marco regulatório avança.", "u": "https://valor.globo.com/financas/criptomoedas/noticia/2026/09/07/bancos-ampliam-cardpio-de-criptomoedas-para-clientes-com-avano-da-regulao.ghtml", "j": "Valor", "h": "07/09", "tm": ["Bancos & Financeiro", "Tecnologia & IA"]},
+{"t": "Artax, do Itaú, reduz risco no Brasil diante de aumento de incertezas", "r": "A gestora do banco diminuiu a exposição a ativos domésticos em meio à eleição acirrada e à crise institucional no Judiciário.", "u": "https://valor.globo.com/financas/noticia/2026/09/08/artax-do-itau-reduz-risco-no-brasil-diante-de-aumento-de-incertezas.ghtml", "j": "Valor", "h": "08/09", "tm": ["Bancos & Financeiro"]},
+{"t": "Mudança nas reservas globais para longe do dólar é superestimada, diz estudo do Fed de Nova York", "r": "Pesquisa do banco regional americano relativiza o discurso de 'desdolarização' que ganhou força entre bancos centrais nos últimos anos.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/mudanca-nas-reservas-globais-para-longe-do-dolar-e-superestimada-diz-estudo-do-fed-de-nova-york.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Dólar recua no exterior com política monetária no radar e avanço do iene", "r": "A moeda americana perdeu força globalmente enquanto investidores reprecificam as próximas decisões dos principais bancos centrais.", "u": "https://valor.globo.com/financas/noticia/2026/09/07/dlar-recua-no-exterior-com-poltica-monetria-no-radar-e-avano-do-iene.ghtml", "j": "Valor", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Juros elevados fazem despesas financeiras das empresas saltarem 12% no 2º trimestre, a R$ 99 bilhões", "r": "O custo da dívida corporativa brasileira voltou a subir com a Selic em patamar restritivo, pressionando o resultado de companhias listadas.", "u": "https://oglobo.globo.com/economia/noticia/2026/09/07/juros-elevados-fazem-despesas-financeiras-das-empresas-saltar-12percent-no-2o-trimestre-a-r-99-bilhoes.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Bancos & Financeiro"]},
+{"t": "'Acabou o oxigênio': bancos travam rolagem de dívida e deixam empresas no sufoco", "r": "Instituições financeiras endureceram critérios de crédito para companhias mais alavancadas, um efeito colateral direto do ciclo de juros altos.", "u": "https://oglobo.globo.com/blogs/capital/post/2026/09/acabou-o-oxigenio-bancos-travam-rolagem-de-divida-e-deixam-empresas-no-sufoco.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Bancos & Financeiro"]},
+{"t": "Apple deve apresentar iPhone 18 Pro e primeiro dobrável em evento na quarta-feira", "r": "O lançamento é visto como teste importante para a capacidade da Apple de reagir à concorrência asiática em dobráveis.", "u": "https://oglobo.globo.com/economia/tecnologia/noticia/2026/09/07/apple-deve-apresentar-iphone-18-pro-e-primeiro-dobravel-em-evento-na-quarta-feira-veja-o-que-esperar.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Tecnologia & IA"]},
+{"t": "Pagamento de US$ 1,5 bi da Anthropic por livros pirateados gera briga entre autores e editoras", "r": "A divisão dos recursos do acordo judicial expõe tensões entre escritores e suas editoras sobre quem deve embolsar a indenização.", "u": "https://oglobo.globo.com/economia/tecnologia/noticia/2026/09/06/pagamento-de-us-15-bi-da-anthropic-por-livros-pirateados-gera-briga-entre-autores-e-editoras.ghtml", "j": "O Globo", "h": "06/09", "tm": ["Tecnologia & IA"]},
+{"t": "'Não é eleição que determina potencial do Brasil', diz executivo do Mercado Livre", "r": "O executivo da companhia argentina defendeu que fatores estruturais pesam mais do que o resultado do pleito para o apetite de investimento no país.", "u": "https://oglobo.globo.com/economia/negocios/noticia/2026/09/07/nao-e-eleicao-que-determina-potencial-do-brasil-diz-executivo-do-mercado-livre.ghtml", "j": "O Globo", "h": "07/09", "tm": ["Varejo & Consumo"]},
+{"t": "Apostar em bets aumenta inadimplência e piora acesso ao crédito, diz estudo", "r": "Levantamento mostra que apostadores frequentes têm taxa de atraso em pagamentos, em média, 20% maior do que a população geral.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/apostar-em-bets-aumenta-inadimplencia-e-piora-acesso-ao-credito-diz-estudo.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Bancos & Financeiro"]},
+{"t": "Shein perde US$ 5 bi em valor de mercado e tem uma das piores semanas após IPO em Hong Kong", "r": "A varejista asiática de moda rápida enfrenta ceticismo do mercado poucas semanas depois de estrear na bolsa.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/shein-perde-us-5-bi-em-valor-de-mercado-e-tem-uma-das-piores-semanas-apos-ipo-em-hong-kong.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Varejo & Consumo", "Fusões & Aquisições"]},
+{"t": "Jaguar Land Rover anuncia corte de 4.000 empregos nos próximos dois anos para reduzir custos", "r": "A fabricante britânica de veículos de luxo cita o peso das tarifas americanas entre os fatores que levaram à decisão.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/jaguar-land-rover-anuncia-corte-de-4000-empregos-nos-proximos-dois-anos-para-reduzir-custos.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Indústria & Aviação"]},
+{"t": "Petróleo supera US$ 98 após ataques a petroleiros e refinaria no Oriente Médio", "r": "O tráfego no Estreito de Hormuz caiu ao menor nível desde maio, reforçando o prêmio de risco geopolítico embutido no preço do barril.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/trafego-no-estreito-de-hormuz-cai-ao-menor-nivel-desde-maio-apos-ataques-a-petroleiros.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Energia & Commodities"]},
+{"t": "STF decide que INSS pode definir teto de juros do consignado", "r": "A decisão dá ao instituto poder de fixar limites nas taxas cobradas em empréstimos consignados, tema sensível para bancos e fintechs do setor.", "u": "https://www1.folha.uol.com.br/mercado/2026/09/stf-decide-que-inss-pode-definir-teto-de-juros-do-consignado-entenda.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Bancos & Financeiro"]},
+{"t": "Vírus frauda QR Code, Pix Copia e Cola e cartão em e-commerces brasileiros sem deixar vestígio", "r": "A nova onda de fraude digital levanta alerta de segurança para o varejo online brasileiro, que depende cada vez mais do Pix.", "u": "https://www1.folha.uol.com.br/tec/2026/09/virus-frauda-qr-code-pix-copia-e-cola-e-cartao-em-ecommerces-brasileiros-sem-deixar-vestigio.shtml", "j": "Folha de SP", "h": "07/09", "tm": ["Tecnologia & IA"]},
+{"t": "Economia perde força e mercado antecipa para 2034 previsão de dívida maior que o PIB", "r": "Analistas anteciparam em vários anos a data em que a dívida pública bruta brasileira deve superar o tamanho da economia.", "u": "https://www.estadao.com.br/economia/economia-perde-forca-e-mercado-antecipa-para-2034-previsao-de-divida-maior-que-o-pib/", "j": "Estadão", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Maior fundo soberano do mundo quer se desfazer de US$ 80 bilhões em títulos do Tesouro dos EUA", "r": "O fundo soberano norueguês avalia reduzir a exposição à dívida americana diante da trajetória fiscal considerada mais arriscada em Washington.", "u": "https://www.estadao.com.br/economia/maior-fundo-soberano-do-mundo-quer-se-desfazer-de-us-80-bilhoes-em-titulos-do-tesouro-dos-eua/", "j": "Estadão", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Agência reguladora aprova 24 blocos de petróleo da Bacia Potiguar", "r": "A liberação de novas áreas de exploração no Nordeste amplia o horizonte de investimentos no setor de óleo e gás no Brasil.", "u": "https://www.estadao.com.br/economia/agencia-reguladora-aprova-24-blocos-de-petroleo-da-bacia-potiguar/", "j": "Estadão", "h": "07/09", "tm": ["Energia & Commodities"]},
+{"t": "You,Inc atrasa entregas, sofre com distratos e acumula patrimônio negativo de R$ 312 milhões", "r": "A incorporadora enfrenta dificuldades financeiras num momento em que o setor imobiliário lida com juros altos e crédito mais escasso.", "u": "https://www.estadao.com.br/economia/negocios/youinc-atrasa-entregas-sofre-com-distratos-e-acumula-patrimonio-negativo-de-r-312-milhoes/", "j": "Estadão", "h": "07/09", "tm": ["Varejo & Consumo"]},
+{"t": "Petróleo atinge maior valor em 6 semanas com novos ataques no Oriente Médio", "r": "A commodity segue em trajetória de alta acumulada, refletindo o risco de uma escalada mais prolongada entre EUA e Irã.", "u": "https://www.cnnbrasil.com.br/economia/money/mercado/petroleo-atinge-maior-valor-em-6-semanas-com-novos-ataques-no-oriente-medio/", "j": "CNN", "h": "07/09", "tm": ["Energia & Commodities"]},
+{"t": "Iene atinge maior valor em 7 meses com inflação e juros no radar", "r": "A valorização da moeda japonesa segue pressionando posições de carry trade montadas em diversas praças globais.", "u": "https://www.cnnbrasil.com.br/economia/money/mercado/iene-atinge-maior-valor-7-meses-com-inflacao-e-juros-no-radar/", "j": "CNN", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Wall Street fecha em queda com expectativa de aumento de juros pelo Fed", "r": "Investidores americanos reagiram com cautela à perspectiva de uma política monetária mais restritiva pela frente.", "u": "https://www.cnnbrasil.com.br/economia/money/mercado/wall-street-fecha-em-queda-com-expectativa-de-aumento-de-juros-pelo-fed/", "j": "CNN", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Risco fiscal está no foco do 'trade eleitoral', diz especialista", "r": "Gestores locais afirmam que o prêmio de risco embutido nos ativos brasileiros hoje reflete primeiro a trajetória fiscal, e só depois o resultado da corrida presidencial.", "u": "https://www.cnnbrasil.com.br/economia/money/mercado/risco-fiscal-esta-no-foco-do-trade-eleitoral-diz-especialista/", "j": "CNN", "h": "07/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Contas do governo pioram com Dario Durigan", "r": "A gestão do novo secretário do Tesouro é associada a uma deterioração adicional do resultado fiscal, tema sensível em ano eleitoral.", "u": "https://www.poder360.com.br/poder-economia/contas-do-governo-pioram-com-dario-durigan/", "j": "Poder360", "h": "08/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Pressão da inadimplência sobre BB sobe; banco é o mais afetado", "r": "O Banco do Brasil aparece como a instituição mais impactada pelo aumento da inadimplência entre os grandes bancos do país.", "u": "https://www.poder360.com.br/poder-economia/pressao-da-inadimplencia-sobre-bb-sobe-banco-e-o-mais-afetado/", "j": "Poder360", "h": "08/09", "tm": ["Bancos & Financeiro"]},
+{"t": "58,7% dos dividendos de estatais pagos à União vieram da Petrobras", "r": "O dado reforça o peso da petroleira nas contas públicas e a sensibilidade do resultado fiscal ao preço do petróleo.", "u": "https://www.poder360.com.br/poder-economia/587-dos-dividendos-de-estatais-pagos-a-uniao-vieram-da-petrobras/", "j": "Poder360", "h": "08/09", "tm": ["Energia & Commodities"]},
+{"t": "Oil closes in on $100 as renewed supply crunch looms", "r": "O barril se aproxima da marca psicológica dos US$ 100 com o mercado global reagindo à escalada no Golfo Pérsico.", "u": "https://www.ft.com/content/c8167dc7-f472-4846-8005-ee18b23736a8", "j": "Financial Times", "h": "08/09", "tm": ["Energia & Commodities"]},
+{"t": "Mistral raises record €3bn as Europe strains to keep pace in AI race", "r": "A captação bilionária da startup francesa é vista como resposta europeia à disputa tecnológica dominada por EUA e China.", "u": "https://www.ft.com/content/adbf5262-c4d5-4312-a9b8-4d3cf30c9e00", "j": "Financial Times", "h": "08/09", "tm": ["Tecnologia & IA"]},
+{"t": "EU opens door to bigger corporate mergers", "r": "A mudança na postura antitruste europeia pode facilitar operações de fusão que antes enfrentariam resistência em Bruxelas.", "u": "https://www.ft.com/content/7c53cee9-3066-4722-acf6-17daa2f54631", "j": "Financial Times", "h": "08/09", "tm": ["Fusões & Aquisições"]},
+{"t": "China's export surge sets stage for record annual surplus", "r": "O ritmo das exportações chinesas em 2026 caminha para um superávit comercial recorde, tema sensível na relação com Washington.", "u": "https://www.ft.com/content/56bcc2fb-99eb-4ad9-af67-101c8d0382cb", "j": "Financial Times", "h": "08/09", "tm": ["Mercado & Câmbio"]},
+{"t": "EverBank to Combine With WaFd to Create $75 Billion Bank", "r": "A fusão cria um banco regional americano de porte relevante, em meio a uma onda de consolidação no setor.", "u": "https://www.wsj.com/business/deals/everbank-to-combine-with-wafd-to-create-75-billion-bank-e71d023c", "j": "Wall Street Journal", "h": "07/09", "tm": ["Fusões & Aquisições", "Bancos & Financeiro"]},
+{"t": "Robinhood Wins a New Role in the Oura IPO: Underwriter", "r": "A corretora amplia sua atuação em Wall Street ao assumir papel de coordenadora numa oferta pública aguardada pelo mercado de tecnologia vestível.", "u": "https://www.wsj.com/finance/robinhood-wins-a-new-role-in-the-oura-ipo-underwriter-9a76c632", "j": "Wall Street Journal", "h": "08/09", "tm": ["Fusões & Aquisições"]},
+{"t": "Range Rover Maker to Cut 4,000 Jobs as Trump's Tariffs Bite", "r": "A Tata Motors, dona da JLR, associa o corte de empregos ao impacto das tarifas americanas sobre suas exportações.", "u": "https://www.wsj.com/business/autos/tata-motors-owned-jlr-plans-redundancy-program-as-it-targets-over-2b-in-savings-4f8fccdb", "j": "Wall Street Journal", "h": "08/09", "tm": ["Indústria & Aviação"]},
+{"t": "French A.I. Start-Up Mistral Raises $3.5 Billion as Part of Strategy Shift", "r": "A captação bilionária reforça a ambição da Mistral de se tornar uma alternativa europeia às gigantes americanas de inteligência artificial.", "u": "https://www.nytimes.com/2026/09/08/business/mistral-ai-fund-raising.html", "j": "NY Times", "h": "08/09", "tm": ["Tecnologia & IA"]},
+{"t": "Canada Imposes New Tariffs on U.S. Goods, as Trade War Intensifies", "r": "A resposta canadense às tarifas de Trump amplia o atrito comercial entre os dois vizinhos norte-americanos.", "u": "https://www.nytimes.com/2026/09/08/business/canada-tariffs-trump.html", "j": "NY Times", "h": "08/09", "tm": ["Mercado & Câmbio"]},
+{"t": "Oil Prices Rise After U.S. and Iran Trade Strikes", "r": "O petróleo reagiu em alta imediatamente após a troca de ataques entre forças americanas e iranianas no Golfo.", "u": "https://www.nytimes.com/2026/09/06/business/oil-gas-prices-iran-war.html", "j": "NY Times", "h": "06/09", "tm": ["Energia & Commodities"]},
+{"t": "OPEC Plus to Keep Oil Production Steady", "r": "O grupo de produtores optou por não alterar suas cotas de produção mesmo com a commodity pressionada pela crise no Golfo.", "u": "https://www.nytimes.com/2026/09/06/business/opec-iran-war-oil-production.html", "j": "NY Times", "h": "06/09", "tm": ["Energia & Commodities"]},
+{"t": "Nvidia-backed Firmus signs deal with OpenAI for Malaysia data centre capacity", "r": "O acordo amplia a presença de infraestrutura de IA no Sudeste Asiático, região que vem atraindo bilhões em investimento em data centers.", "u": "https://www.reuters.com/world/asia-pacific/nvidia-backed-firmus-signs-deal-with-openai-malaysia-data-centre-capacity-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Tecnologia & IA"]},
+{"t": "BHP, union talks for Port Hedland iron ore workers to stretch into next week", "r": "A negociação salarial num dos principais portos exportadores de minério de ferro do mundo é acompanhada de perto pelo mercado de commodities.", "u": "https://www.reuters.com/business/world-at-work/bhp-union-talks-port-hedland-iron-ore-workers-stretch-into-next-week-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Energia & Commodities"]},
+{"t": "China's car exports stay strong in August but domestic sales decline more", "r": "A indústria automotiva chinesa segue dependente do mercado externo para compensar a fraqueza da demanda doméstica.", "u": "https://www.reuters.com/business/autos-transportation/chinas-car-exports-roar-august-while-domestic-sales-extend-declines-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Indústria & Aviação"]},
+{"t": "Slovenia clears Tesla's FSD driver assistance ahead of EU vote", "r": "A aprovação nacional antecede uma votação europeia mais ampla sobre os sistemas de condução assistida da Tesla no bloco.", "u": "https://www.reuters.com/business/slovenia-clears-teslas-fsd-driver-assistance-ahead-eu-vote-2026-09-08/", "j": "Reuters", "h": "08/09", "tm": ["Tecnologia & IA"]}
+];
+
+// ---------- top 10 do dia (destaque cross-tab, aba Destaques) ----------
+// cada item referencia uma URL já existente em NOTICIAS, NOTICIAS_INTL ou NOTICIAS_MERC — nunca conteúdo novo/inventado
+const TOP10 = [{"u": "https://valor.globo.com/politica/eleicoes-2026/noticia/2026/09/07/pesquisa-quaest-lula-e-flavio-estao-numericamente-empatados-com-41percent-no-2o-turno.ghtml", "tab": "brasil"}, {"u": "https://valor.globo.com/politica/noticia/2026/09/08/ministros-aposentados-do-stf-classificam-crise-como-a-mais-aguda-da-historia.ghtml", "tab": "brasil"}, {"u": "https://www.estadao.com.br/economia/economia-perde-forca-e-mercado-antecipa-para-2034-previsao-de-divida-maior-que-o-pib/", "tab": "brasil"}, {"u": "https://www.reuters.com/world/middle-east/hormuz-traffic-slows-after-iran-threatens-retaliation-us-attacks-2026-09-08/", "tab": "intl"}, {"u": "https://www.reuters.com/business/autos-transportation/canadas-retaliatory-tariffs-take-effect-us-trade-talks-stall-2026-09-08/", "tab": "intl"}, {"u": "https://www.reuters.com/world/europe/far-right-afd-courts-conservative-support-after-historic-german-state-election-2026-09-07/", "tab": "intl"}, {"u": "https://www.reuters.com/world/uk/uks-finance-minister-healey-walks-fiscal-tightrope-before-first-budget-2026-09-07/", "tab": "intl"}, {"u": "https://www.reuters.com/world/asia-pacific/why-boj-will-bet-small-rate-hikes-now-avoid-bigger-shock-later-2026-09-08/", "tab": "intl"}, {"u": "https://www.reuters.com/world/asia-pacific/chinas-exports-up-25-yy-august-imports-surge-282-2026-09-08/", "tab": "intl"}, {"u": "https://www.wsj.com/world/europe/trump-envoys-visit-ukraine-in-new-push-for-peace-talks-ee01b34e", "tab": "intl"}];
+
+function buscarPorUrl(u){
+  return NOTICIAS.find(n=>n.u===u) || NOTICIAS_INTL.find(n=>n.u===u) || NOTICIAS_MERC.find(n=>n.u===u);
+}
+
+function renderTop10(){
+  const grid = document.getElementById('top10Grid');
+  if(!grid) return;
+  const tabLabel = {brasil:"Brasil", intl:"Internacional", merc:"Mercados & Empresas"};
+  grid.innerHTML = TOP10.map((item,i)=>{
+    const n = buscarPorUrl(item.u);
+    if(!n) return '';
+    return '<div class="top10-item">' +
+      '<div class="top10-num">'+(i+1)+'</div>' +
+      '<div class="top10-corpo">' +
+        '<span class="top10-tag">'+tabLabel[item.tab]+'</span>' +
+        '<h3><a href="'+n.u+'" target="_blank" rel="noopener">'+n.t+'</a></h3>' +
+        '<p>'+n.r+'</p>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ---------- taxonomia fixa do bloco Internacional (não altere) ----------
+const TEMAS_INTL = ["Guerra & Conflitos","Estados Unidos","Europa","China","Japão","Reino Unido","Economia Global"];
+const FONTES_INTL = ["Financial Times","Wall Street Journal","NY Times","Reuters"];
+
+// ---------- taxonomia fixa do bloco Mercados & Empresas (não altere) ----------
+const TEMAS_MERC = ["Mercado & Câmbio","Bancos & Financeiro","Tecnologia & IA","Varejo & Consumo","Indústria & Aviação","Energia & Commodities","Agronegócio","Fusões & Aquisições"];
+const FONTES_MERC = ["Valor","O Globo","Folha de SP","Estadão","CNN","Metrópoles","Poder360","BCB","FGV","IBGE","Financial Times","Wall Street Journal","NY Times","Reuters"];
+
+function slugify(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-');}
+
+// ===================== ABA BRASIL =====================
+let filtroTema = "Todos";
+let filtroJornal = "Todas";
+
+function contarTema(tema){
+  if(tema==="Todos") return NOTICIAS.length;
+  return NOTICIAS.filter(n=>n.tm.includes(tema)).length;
+}
+function contarJornal(jornal){
+  if(jornal==="Todas") return NOTICIAS.length;
+  return NOTICIAS.filter(n=>n.j===jornal).length;
+}
+
+function renderChips(){
+  const chipsTemas = document.getElementById('chipsTemas');
+  const chipsJornais = document.getElementById('chipsJornais');
+  chipsTemas.innerHTML = "";
+  chipsJornais.innerHTML = "";
+
+  const temasComTodos = ["Todos", ...TEMAS];
+  temasComTodos.forEach(tema=>{
+    const n = contarTema(tema);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (filtroTema===tema ? ' ativo' : '');
+    btn.innerHTML = tema + ' <span class="n">' + n + '</span>';
+    if(n===0){ btn.disabled = true; }
+    btn.addEventListener('click', ()=>{ filtroTema = tema; render(); });
+    chipsTemas.appendChild(btn);
+  });
+
+  const jornaisComTodas = ["Todas", ...JORNAIS];
+  jornaisComTodas.forEach(jornal=>{
+    const n = contarJornal(jornal);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (filtroJornal===jornal ? ' ativo' : '');
+    btn.innerHTML = jornal + ' <span class="n">' + n + '</span>';
+    if(n===0){ btn.disabled = true; }
+    btn.addEventListener('click', ()=>{ filtroJornal = jornal; render(); });
+    chipsJornais.appendChild(btn);
+  });
+}
+
+function render(){
+  renderChips();
+  const lista = document.getElementById('lista');
+  const contagem = document.getElementById('contagem');
+  let itens = NOTICIAS;
+  if(filtroTema !== "Todos"){ itens = itens.filter(n=>n.tm.includes(filtroTema)); }
+  if(filtroJornal !== "Todas"){ itens = itens.filter(n=>n.j===filtroJornal); }
+
+  contagem.textContent = itens.length + (itens.length===1 ? " notícia" : " notícias") + " · total do dia: " + NOTICIAS.length;
+
+  if(itens.length===0){
+    lista.innerHTML = '<div class="vazio">Nenhuma notícia encontrada para esse filtro. Tente combinar outro tema ou fonte.</div>';
+    return;
+  }
+
+  lista.innerHTML = itens.map(n=>{
+    const temas = n.tm.map(t=>'<span class="tema-tag">'+t+'</span>').join('');
+    return '<div class="noticia">' +
+      '<h2><a href="'+n.u+'" target="_blank" rel="noopener">'+n.t+'</a></h2>' +
+      '<div class="resumo-item">'+n.r+'</div>' +
+      '<div class="rodape"><span class="jornal-tag">'+n.j+'</span><span>'+n.h+'</span>'+temas+'</div>' +
+      '</div>';
+  }).join('');
+}
+
+document.getElementById('btnResumo').addEventListener('click', function(){
+  const corpo = document.getElementById('resumoCorpo');
+  const expandido = this.getAttribute('aria-expanded') === 'true';
+  this.setAttribute('aria-expanded', String(!expandido));
+  corpo.classList.toggle('aberto');
+});
+
+// ===================== ABA INTERNACIONAL =====================
+let filtroTemaIntl = "Todos";
+let filtroFonteIntl = "Todas";
+
+function contarTemaIntl(tema){
+  if(tema==="Todos") return NOTICIAS_INTL.length;
+  return NOTICIAS_INTL.filter(n=>n.tm.includes(tema)).length;
+}
+function contarFonteIntl(fonte){
+  if(fonte==="Todas") return NOTICIAS_INTL.length;
+  return NOTICIAS_INTL.filter(n=>n.j===fonte).length;
+}
+
+function renderChipsIntl(){
+  const chipsTemas = document.getElementById('chipsTemasIntl');
+  const chipsFontes = document.getElementById('chipsFontesIntl');
+  chipsTemas.innerHTML = "";
+  chipsFontes.innerHTML = "";
+
+  const temasComTodos = ["Todos", ...TEMAS_INTL];
+  temasComTodos.forEach(tema=>{
+    const n = contarTemaIntl(tema);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (filtroTemaIntl===tema ? ' ativo' : '');
+    btn.innerHTML = tema + ' <span class="n">' + n + '</span>';
+    if(n===0){ btn.disabled = true; }
+    btn.addEventListener('click', ()=>{ filtroTemaIntl = tema; renderIntl(); });
+    chipsTemas.appendChild(btn);
+  });
+
+  const fontesComTodas = ["Todas", ...FONTES_INTL];
+  fontesComTodas.forEach(fonte=>{
+    const n = contarFonteIntl(fonte);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (filtroFonteIntl===fonte ? ' ativo' : '');
+    btn.innerHTML = fonte + ' <span class="n">' + n + '</span>';
+    if(n===0){ btn.disabled = true; }
+    btn.addEventListener('click', ()=>{ filtroFonteIntl = fonte; renderIntl(); });
+    chipsFontes.appendChild(btn);
+  });
+}
+
+function renderIntl(){
+  renderChipsIntl();
+  const lista = document.getElementById('listaIntl');
+  const contagem = document.getElementById('contagemIntl');
+  let itens = NOTICIAS_INTL;
+  if(filtroTemaIntl !== "Todos"){ itens = itens.filter(n=>n.tm.includes(filtroTemaIntl)); }
+  if(filtroFonteIntl !== "Todas"){ itens = itens.filter(n=>n.j===filtroFonteIntl); }
+
+  contagem.textContent = itens.length + (itens.length===1 ? " notícia" : " notícias") + " · total do dia: " + NOTICIAS_INTL.length;
+
+  if(itens.length===0){
+    lista.innerHTML = '<div class="vazio">Nenhuma notícia encontrada para esse filtro. Tente combinar outro tema ou fonte.</div>';
+    return;
+  }
+
+  lista.innerHTML = itens.map(n=>{
+    const temas = n.tm.map(t=>'<span class="tema-tag">'+t+'</span>').join('');
+    return '<div class="noticia">' +
+      '<h2><a href="'+n.u+'" target="_blank" rel="noopener">'+n.t+'</a></h2>' +
+      '<div class="resumo-item">'+n.r+'</div>' +
+      '<div class="rodape"><span class="jornal-tag">'+n.j+'</span><span>'+n.h+'</span>'+temas+'</div>' +
+      '</div>';
+  }).join('');
+}
+
+document.getElementById('btnResumoIntl').addEventListener('click', function(){
+  const corpo = document.getElementById('resumoCorpoIntl');
+  const expandido = this.getAttribute('aria-expanded') === 'true';
+  this.setAttribute('aria-expanded', String(!expandido));
+  corpo.classList.toggle('aberto');
+});
+
+// ===================== ABA MERCADOS & EMPRESAS =====================
+let filtroTemaMerc = "Todos";
+let filtroFonteMerc = "Todas";
+
+function contarTemaMerc(tema){
+  if(tema==="Todos") return NOTICIAS_MERC.length;
+  return NOTICIAS_MERC.filter(n=>n.tm.includes(tema)).length;
+}
+function contarFonteMerc(fonte){
+  if(fonte==="Todas") return NOTICIAS_MERC.length;
+  return NOTICIAS_MERC.filter(n=>n.j===fonte).length;
+}
+
+function renderChipsMerc(){
+  const chipsTemas = document.getElementById('chipsTemasMerc');
+  const chipsFontes = document.getElementById('chipsFontesMerc');
+  chipsTemas.innerHTML = "";
+  chipsFontes.innerHTML = "";
+
+  const temasComTodos = ["Todos", ...TEMAS_MERC];
+  temasComTodos.forEach(tema=>{
+    const n = contarTemaMerc(tema);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (filtroTemaMerc===tema ? ' ativo' : '');
+    btn.innerHTML = tema + ' <span class="n">' + n + '</span>';
+    if(n===0){ btn.disabled = true; }
+    btn.addEventListener('click', ()=>{ filtroTemaMerc = tema; renderMerc(); });
+    chipsTemas.appendChild(btn);
+  });
+
+  const fontesComTodas = ["Todas", ...FONTES_MERC];
+  fontesComTodas.forEach(fonte=>{
+    const n = contarFonteMerc(fonte);
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (filtroFonteMerc===fonte ? ' ativo' : '');
+    btn.innerHTML = fonte + ' <span class="n">' + n + '</span>';
+    if(n===0){ btn.disabled = true; }
+    btn.addEventListener('click', ()=>{ filtroFonteMerc = fonte; renderMerc(); });
+    chipsFontes.appendChild(btn);
+  });
+}
+
+function renderMerc(){
+  renderChipsMerc();
+  const lista = document.getElementById('listaMerc');
+  const contagem = document.getElementById('contagemMerc');
+  let itens = NOTICIAS_MERC;
+  if(filtroTemaMerc !== "Todos"){ itens = itens.filter(n=>n.tm.includes(filtroTemaMerc)); }
+  if(filtroFonteMerc !== "Todas"){ itens = itens.filter(n=>n.j===filtroFonteMerc); }
+
+  contagem.textContent = itens.length + (itens.length===1 ? " notícia" : " notícias") + " · total do dia: " + NOTICIAS_MERC.length;
+
+  if(itens.length===0){
+    lista.innerHTML = '<div class="vazio">Nenhuma notícia encontrada para esse filtro. Tente combinar outro tema ou fonte.</div>';
+    return;
+  }
+
+  lista.innerHTML = itens.map(n=>{
+    const temas = n.tm.map(t=>'<span class="tema-tag">'+t+'</span>').join('');
+    return '<div class="noticia">' +
+      '<h2><a href="'+n.u+'" target="_blank" rel="noopener">'+n.t+'</a></h2>' +
+      '<div class="resumo-item">'+n.r+'</div>' +
+      '<div class="rodape"><span class="jornal-tag">'+n.j+'</span><span>'+n.h+'</span>'+temas+'</div>' +
+      '</div>';
+  }).join('');
+}
+
+document.getElementById('btnResumoMerc').addEventListener('click', function(){
+  const corpo = document.getElementById('resumoCorpoMerc');
+  const expandido = this.getAttribute('aria-expanded') === 'true';
+  this.setAttribute('aria-expanded', String(!expandido));
+  corpo.classList.toggle('aberto');
+});
+
+// ===================== NAVEGAÇÃO POR ABAS =====================
+document.getElementById('nBrasil').textContent = NOTICIAS.length;
+document.getElementById('nIntl').textContent = NOTICIAS_INTL.length;
+document.getElementById('nMerc').textContent = NOTICIAS_MERC.length;
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('ativo'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('ativo');
+  });
+});
+
+render();
+renderIntl();
+renderMerc();
+renderTop10();
+</script>
+</body>
+</html>
