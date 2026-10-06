@@ -21,14 +21,6 @@ Valor, O Globo, Folha, Estadão, CNN Brasil, Metrópoles, Poder360, BCB, FGV/IBR
 4. Montagem em um template HTML fixo e controle de qualidade automático (links, temas, duplicatas).
 5. Entrega do `index.html` e publicação no Cowork.
 
-## Estrutura
-
-```
-.
-├── index.html   # painel do dia, sobrescrito a cada execução
-└── README.md
-```
-
 ## Aviso
 
 Os cards trazem manchetes e resumos de uma frase, com link para a matéria original. O conteúdo pertence aos respectivos veículos. Uso profissional pessoal; não substitui a leitura das matérias.
